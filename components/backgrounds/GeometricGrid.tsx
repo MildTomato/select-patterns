@@ -17,6 +17,17 @@ interface Ripple {
   alpha: number
 }
 
+interface Blob {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  angle: number
+  angleSpeed: number
+  radiusX: number
+  radiusY: number
+}
+
 export default function GeometricGrid() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mouseRef = useRef({ x: -9999, y: -9999 })
@@ -24,6 +35,7 @@ export default function GeometricGrid() {
   const animRef = useRef<number>(0)
   const ripplesRef = useRef<Ripple[]>([])
   const tRef = useRef(0)
+  const blobsRef = useRef<Blob[]>([])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -33,11 +45,9 @@ export default function GeometricGrid() {
 
     ctx.imageSmoothingEnabled = false
 
-    const SPACING = 20 // dense grid — ~26 cols per 500px like the reference
+    const SPACING = 20
 
-    // Seed a deterministic shape per cell so it doesn't re-randomise on resize
     const shapeForCell = (col: number, row: number): ShapeType => {
-      // simple hash that spreads the four types evenly
       const h = ((col * 2654435761) ^ (row * 2246822519)) >>> 0
       return (h % 4) as ShapeType
     }
@@ -57,8 +67,19 @@ export default function GeometricGrid() {
       }
     }
 
+    const initBlobs = () => {
+      const W = window.innerWidth
+      const H = window.innerHeight
+      // 4 independent blobs with different sizes, speeds, and rotation rates
+      blobsRef.current = [
+        { x: W * 0.35, y: H * 0.4,  vx: 1.1,  vy: 0.7,  angle: 0,    angleSpeed: 0.012, radiusX: W * 0.22, radiusY: H * 0.28 },
+        { x: W * 0.65, y: H * 0.6,  vx: -0.8, vy: 1.0,  angle: 1.2,  angleSpeed: -0.009, radiusX: W * 0.18, radiusY: H * 0.22 },
+        { x: W * 0.5,  y: H * 0.25, vx: 0.6,  vy: -1.2, angle: 2.5,  angleSpeed: 0.015, radiusX: W * 0.15, radiusY: H * 0.18 },
+        { x: W * 0.2,  y: H * 0.7,  vx: -1.3, vy: -0.6, angle: 0.8,  angleSpeed: -0.011, radiusX: W * 0.20, radiusY: H * 0.25 },
+      ]
+    }
+
     const resize = () => {
-      // Use device pixel ratio for sharp rendering
       const dpr = window.devicePixelRatio || 1
       const w = window.innerWidth
       const h = window.innerHeight
@@ -69,28 +90,21 @@ export default function GeometricGrid() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.imageSmoothingEnabled = false
       initCells()
+      initBlobs()
     }
 
-    // Draw each shape crisp — all coordinates are pre-rounded integers
-    const drawShape = (
-      x: number,
-      y: number,
-      type: ShapeType,
-      size: number,
-    ) => {
+    const drawShape = (x: number, y: number, type: ShapeType, size: number, alpha: number) => {
       const s = Math.max(0.5, size)
+      ctx.globalAlpha = alpha
       ctx.fillStyle = "#ffffff"
       ctx.strokeStyle = "#ffffff"
-      ctx.globalAlpha = 1
 
       if (type === 0) {
-        // Filled dot
         const r = Math.max(0.5, s * 0.38)
         ctx.beginPath()
         ctx.arc(x, y, r, 0, Math.PI * 2)
         ctx.fill()
       } else if (type === 1) {
-        // Open circle ring
         const r = Math.max(1, s * 0.8)
         const lw = Math.max(0.5, s * 0.18)
         ctx.lineWidth = lw
@@ -98,7 +112,6 @@ export default function GeometricGrid() {
         ctx.arc(x, y, r, 0, Math.PI * 2)
         ctx.stroke()
       } else if (type === 2) {
-        // Solid upward triangle
         const h = s * 1.4
         const hw = s * 0.8
         ctx.beginPath()
@@ -108,7 +121,6 @@ export default function GeometricGrid() {
         ctx.closePath()
         ctx.fill()
       } else {
-        // Plus / cross
         const arm = Math.max(1, s * 0.9)
         const thick = Math.max(0.5, s * 0.2)
         ctx.beginPath()
@@ -120,23 +132,24 @@ export default function GeometricGrid() {
       }
     }
 
-    const MAX_SIZE = 9    // max size at bloom center
-    const MIN_SIZE = 0.6  // nearly invisible at edges
-    const BLOOM_RADIUS_FACTOR = 0.38 // fraction of diagonal for the bloom spread
+    const MAX_SIZE = 9
+    const MIN_SIZE = 0.5
     const CURSOR_RADIUS = 130
     const CURSOR_BOOST = 8
 
     const animate = () => {
-      tRef.current += 0.008
-      const t = tRef.current
-
+      tRef.current += 0.022
       const W = window.innerWidth
       const H = window.innerHeight
 
-      // Idle bloom center drifts slowly in a gentle Lissajous loop
-      const bloomX = W * 0.5 + Math.sin(t * 0.7) * W * 0.18
-      const bloomY = H * 0.5 + Math.sin(t * 0.5) * H * 0.14
-      const bloomRadius = Math.hypot(W, H) * BLOOM_RADIUS_FACTOR
+      // Update blobs — move and bounce off edges, rotate their ellipse angle
+      for (const blob of blobsRef.current) {
+        blob.x += blob.vx
+        blob.y += blob.vy
+        blob.angle += blob.angleSpeed
+        if (blob.x < 0 || blob.x > W) blob.vx *= -1
+        if (blob.y < 0 || blob.y > H) blob.vy *= -1
+      }
 
       ctx.fillStyle = "#000000"
       ctx.fillRect(0, 0, W, H)
@@ -145,13 +158,24 @@ export default function GeometricGrid() {
       const my = mouseRef.current.y
 
       for (const cell of cellsRef.current) {
-        // Radial distance from the animated bloom center
-        const dx = cell.x - bloomX
-        const dy = cell.y - bloomY
-        const distBloom = Math.sqrt(dx * dx + dy * dy)
-        // Gaussian-ish falloff: 1 at center, ~0 at bloomRadius
-        const bloomFactor = Math.max(0, 1 - distBloom / bloomRadius)
-        const idleSize = MIN_SIZE + bloomFactor * bloomFactor * (MAX_SIZE - MIN_SIZE)
+        // Sum influence from all blobs — each blob is a rotated ellipse falloff
+        let totalInfluence = 0
+        for (const blob of blobsRef.current) {
+          const dx = cell.x - blob.x
+          const dy = cell.y - blob.y
+          // Rotate into blob's local space
+          const cos = Math.cos(blob.angle)
+          const sin = Math.sin(blob.angle)
+          const lx = dx * cos + dy * sin
+          const ly = -dx * sin + dy * cos
+          // Ellipse distance (0 at center, 1 at boundary)
+          const ellipseDist = Math.sqrt((lx / blob.radiusX) ** 2 + (ly / blob.radiusY) ** 2)
+          const influence = Math.max(0, 1 - ellipseDist)
+          totalInfluence += influence * influence // squared for sharper falloff edge
+        }
+        // Clamp and map to size
+        const clamped = Math.min(1, totalInfluence)
+        const idleSize = MIN_SIZE + clamped * (MAX_SIZE - MIN_SIZE)
 
         // Cursor proximity boost
         const cdx = cell.x - mx
@@ -162,10 +186,14 @@ export default function GeometricGrid() {
 
         const finalSize = idleSize + cursorBoost
 
-        if (finalSize < 0.4) continue // skip invisible shapes
+        if (finalSize < 0.4) continue
 
-        ctx.globalAlpha = 1
-        drawShape(cell.x, cell.y, cell.type, finalSize)
+        // Alpha: small shapes are dim (gray), large shapes are bright white
+        // Normalise finalSize against MAX_SIZE+CURSOR_BOOST ceiling
+        const sizeNorm = Math.min(1, (finalSize - MIN_SIZE) / (MAX_SIZE + CURSOR_BOOST - MIN_SIZE))
+        const alpha = 0.12 + sizeNorm * 0.88 // 0.12 at smallest → 1.0 at largest
+
+        drawShape(cell.x, cell.y, cell.type, finalSize, alpha)
       }
 
       // Click ripples
@@ -177,8 +205,8 @@ export default function GeometricGrid() {
         ctx.beginPath()
         ctx.arc(ripple.x, ripple.y, ripple.r, 0, Math.PI * 2)
         ctx.stroke()
-        ripple.r += 4
-        ripple.alpha *= 0.91
+        ripple.r += 5
+        ripple.alpha *= 0.90
       }
 
       ctx.globalAlpha = 1
