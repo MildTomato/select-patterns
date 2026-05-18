@@ -17,22 +17,40 @@ const BAYER = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]]
 const WORDS = ["CONF","TALK","OPEN","CODE","SHIP","LIVE","DEMO","BUILD","NEXT","DATA"]
 function wordAt(col:number,row:number){ const h=((col*2654435761)^(row*2246822519))>>>0; return WORDS[h%WORDS.length] }
 
-const TILE_COLORS = ["#0d9e6a","#1a4731","#276749","#3ECF8E","#a8f0d4"]
-function tileColor(inf: number): string {
-  if (inf > 0.75) return TILE_COLORS[1]
-  if (inf > 0.55) return TILE_COLORS[2]
-  if (inf > 0.40) return TILE_COLORS[3]
-  if (inf > 0.28) return TILE_COLORS[4]
-  return TILE_COLORS[4]
+// Light mode palettes
+const TILE_COLORS_LIGHT = ["#0d9e6a","#1a4731","#276749","#3ECF8E","#a8f0d4"]
+function tileColorLight(inf: number): string {
+  if (inf > 0.75) return TILE_COLORS_LIGHT[1]
+  if (inf > 0.55) return TILE_COLORS_LIGHT[2]
+  if (inf > 0.40) return TILE_COLORS_LIGHT[3]
+  if (inf > 0.28) return TILE_COLORS_LIGHT[4]
+  return TILE_COLORS_LIGHT[4]
+}
+const DOT_COLORS_LIGHT = ["#b8b4ae","#b8d4c8","#8ec8b0","#5db896","#3ECF8E"]
+function dotColorLight(inf: number): string {
+  if (inf > 0.25) return DOT_COLORS_LIGHT[4]
+  if (inf > 0.16) return DOT_COLORS_LIGHT[3]
+  if (inf > 0.10) return DOT_COLORS_LIGHT[2]
+  if (inf > 0.05) return DOT_COLORS_LIGHT[1]
+  return DOT_COLORS_LIGHT[0]
 }
 
-const DOT_COLORS = ["#b8b4ae","#b8d4c8","#8ec8b0","#5db896","#3ECF8E"]
-function dotColor(inf: number): string {
-  if (inf > 0.25) return DOT_COLORS[4]
-  if (inf > 0.16) return DOT_COLORS[3]
-  if (inf > 0.10) return DOT_COLORS[2]
-  if (inf > 0.05) return DOT_COLORS[1]
-  return DOT_COLORS[0]
+// Dark mode palettes
+const TILE_COLORS_DARK = ["#0d1f17","#1a4731","#276749","#3ECF8E","#a8f0d4"]
+function tileColorDark(inf: number): string {
+  if (inf > 0.75) return TILE_COLORS_DARK[4]
+  if (inf > 0.55) return TILE_COLORS_DARK[3]
+  if (inf > 0.40) return TILE_COLORS_DARK[2]
+  if (inf > 0.28) return TILE_COLORS_DARK[1]
+  return TILE_COLORS_DARK[0]
+}
+const DOT_COLORS_DARK = ["#111f17","#1a3326","#2a5040","#3a7a5a","#3ECF8E"]
+function dotColorDark(inf: number): string {
+  if (inf > 0.25) return DOT_COLORS_DARK[4]
+  if (inf > 0.16) return DOT_COLORS_DARK[3]
+  if (inf > 0.10) return DOT_COLORS_DARK[2]
+  if (inf > 0.05) return DOT_COLORS_DARK[1]
+  return DOT_COLORS_DARK[0]
 }
 
 // Compute influence of an organic blob at point (px, py)
@@ -124,7 +142,11 @@ export default function DitherGreenOrganic() {
       ripplesR.current = ripplesR.current.filter(r => r.life < 1)
       for (const r of ripplesR.current) { r.radius += 10 * delta; r.life += 0.04 * delta }
 
-      ctx.fillStyle = "#f5f0eb"; ctx.fillRect(0, 0, W, H)
+      const isDark = document.documentElement.classList.contains("dark")
+      ctx.fillStyle = isDark ? "#060e0a" : "#f5f0eb"
+      ctx.fillRect(0, 0, W, H)
+      const tileColor = isDark ? tileColorDark : tileColorLight
+      const dotColor  = isDark ? dotColorDark  : dotColorLight
 
       const mx = mouse.current.x, my = mouse.current.y
       const COLS = Math.ceil(W / STEP) + 1, ROWS = Math.ceil(H / STEP) + 1
