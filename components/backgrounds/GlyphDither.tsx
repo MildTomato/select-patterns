@@ -131,14 +131,11 @@ export default function GlyphDither() {
             ctx.textBaseline = "middle"
             ctx.fillText(wordAt(col, row), cx, cy)
           } else {
-            // Small dark triangle on cream
-            const s = 4
+            // Small dark dot on cream
+            const s = 2
             ctx.fillStyle = "#222222"
             ctx.beginPath()
-            ctx.moveTo(cx, cy - s)
-            ctx.lineTo(cx + s, cy + s * 0.7)
-            ctx.lineTo(cx - s, cy + s * 0.7)
-            ctx.closePath()
+            ctx.arc(cx, cy, s, 0, Math.PI * 2)
             ctx.fill()
           }
         }
