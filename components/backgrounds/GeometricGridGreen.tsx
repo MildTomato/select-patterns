@@ -214,7 +214,8 @@ export default function GeometricGridGreen() {
         const cdx = cell.x - mx
         const cdy = cell.y - my
         const cursorTarget = Math.max(0, 1 - Math.sqrt(cdx * cdx + cdy * cdy) / CURSOR_RADIUS)
-        cell.smoothCursor += (cursorTarget - cell.smoothCursor) * 0.04 * delta
+        const lerpSpeed = cursorTarget > cell.smoothCursor ? 0.08 * delta : 0.008 * delta
+        cell.smoothCursor += (cursorTarget - cell.smoothCursor) * lerpSpeed
         const cursorFactor = cell.smoothCursor
         const cursorBoost = cursorFactor * CURSOR_BOOST
 
