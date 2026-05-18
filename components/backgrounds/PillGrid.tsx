@@ -31,14 +31,14 @@ interface Blob {
 // Conference words cycling through the grid
 const WORDS = ["CONF", "TALK", "BUILD", "SHIP", "DEMO", "OPEN", "LIVE", "CODE", "MAKE", "NEXT", "EDGE", "DATA"]
 
-// 5 color steps — dark background gray → white
+// 5 color steps — Supabase greens, dark to bright
 // Each step: [bg color, text color]
 const STEPS: [string, string][] = [
-  ["#1a1a1a", "#3a3a3a"],   // almost invisible — tiny outline pill
-  ["#333333", "#888888"],   // dim gray
-  ["#666666", "#cccccc"],   // mid gray
-  ["#cccccc", "#111111"],   // light fill, dark text
-  ["#ffffff", "#000000"],   // full white fill, black text
+  ["#0d1f17", "#1a3a2a"],   // almost invisible dark green
+  ["#1a4731", "#3ECF8E"],   // dark green bg, brand green text
+  ["#276749", "#edfff7"],   // mid green bg, mint text
+  ["#3ECF8E", "#0d1f17"],   // brand green bg, dark text
+  ["#edfff7", "#0d1f17"],   // near-white mint bg, dark text
 ]
 
 function stepForInfluence(clamped: number, cursorNorm: number): number {
@@ -182,7 +182,7 @@ export default function PillGrid() {
         if (blob.y < 0 || blob.y > H) blob.vy *= -1
       }
 
-      ctx.fillStyle = "#0a0a0a"
+      ctx.fillStyle = "#060e0a"
       ctx.fillRect(0, 0, W, H)
 
       const mx = mouseRef.current.x
