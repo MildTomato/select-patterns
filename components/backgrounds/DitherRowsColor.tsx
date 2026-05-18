@@ -9,7 +9,19 @@ interface Ripple { x:number;y:number;radius:number;life:number }
 const WORDS = ["CONF","TALK","OPEN","CODE","SHIP","LIVE","DEMO","BUILD","NEXT","DATA"]
 function wordAt(col:number,row:number){ const h=((col*2654435761)^(row*2246822519))>>>0; return WORDS[h%WORDS.length] }
 
-export default function DitherRows() {
+// Each row cycles through this palette
+const ROW_COLORS = [
+  "#3ECF8E", // supabase green
+  "#2563eb", // blue
+  "#dc2626", // red
+  "#d97706", // amber
+  "#7c3aed", // violet
+  "#0891b2", // cyan
+  "#be185d", // pink
+  "#65a30d", // lime
+]
+
+export default function DitherRowsColor() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mouse = useRef({x:-9999,y:-9999})
   const blobsR = useRef<Blob[]>([])
@@ -78,14 +90,16 @@ export default function DitherRows() {
           const inside = inf > 0.30 + rowBias
 
           if(inside){
-            ctx.fillStyle="#111111"
+            const rowColor = ROW_COLORS[row % ROW_COLORS.length]
+            ctx.fillStyle = rowColor
             ctx.fillRect(cx-STEP/2,cy-STEP/2,STEP,STEP)
             ctx.fillStyle="#ffffff"
             ctx.font="bold 8px monospace"
             ctx.textAlign="center"; ctx.textBaseline="middle"
             ctx.fillText(wordAt(col,row),cx,cy)
           } else {
-            ctx.fillStyle="#222222"
+            const rowColor = ROW_COLORS[row % ROW_COLORS.length]
+            ctx.fillStyle = rowColor
             ctx.beginPath(); ctx.arc(cx,cy,2,0,Math.PI*2); ctx.fill()
           }
         }
