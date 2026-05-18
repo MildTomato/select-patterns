@@ -8,6 +8,7 @@ interface Cell {
   x: number
   y: number
   type: ExtendedShapeType
+  smoothCursor: number
 }
 
 interface Ripple {
@@ -33,12 +34,12 @@ interface Blob {
 // Supabase green palette — dark background, 5 steps through to brand green
 const SHADES = ["#0d1f17", "#1a4731", "#276749", "#3ECF8E", "#edfff7"]
 
-function shadeForInfluence(clamped: number, cursorBoost: number): string {
-  if (cursorBoost > 0) return SHADES[4]
-  if (clamped > 0.65) return SHADES[4]
-  if (clamped > 0.35) return SHADES[3]
-  if (clamped > 0.15) return SHADES[2]
-  if (clamped > 0.05) return SHADES[1]
+function shadeForInfluence(clamped: number, cursorNorm: number): string {
+  const combined = Math.min(1, clamped + cursorNorm * 0.6)
+  if (combined > 0.65) return SHADES[4]
+  if (combined > 0.35) return SHADES[3]
+  if (combined > 0.15) return SHADES[2]
+  if (combined > 0.05) return SHADES[1]
   return SHADES[0]
 }
 
@@ -79,6 +80,7 @@ export default function GeometricGridGreen() {
             x: Math.round(c * SPACING),
             y: Math.round(r * SPACING),
             type: shapeForCell(c, r),
+            smoothCursor: 0,
           })
         }
       }
@@ -208,11 +210,13 @@ export default function GeometricGridGreen() {
         }
         const clamped = Math.min(1, totalInfluence)
 
-        // Cursor proximity
+        // Cursor proximity — lerped for slow build/fade
         const cdx = cell.x - mx
         const cdy = cell.y - my
-        const cursorFactor = Math.max(0, 1 - Math.sqrt(cdx * cdx + cdy * cdy) / CURSOR_RADIUS)
-        const cursorBoost = cursorFactor * cursorFactor * CURSOR_BOOST
+        const cursorTarget = Math.max(0, 1 - Math.sqrt(cdx * cdx + cdy * cdy) / CURSOR_RADIUS)
+        cell.smoothCursor += (cursorTarget - cell.smoothCursor) * 0.04 * delta
+        const cursorFactor = cell.smoothCursor
+        const cursorBoost = cursorFactor * CURSOR_BOOST
 
         // Ripple boost — check if any ripple wavefront is passing through this cell
         let rippleBoost = 0
@@ -273,8 +277,6 @@ export default function GeometricGridGreen() {
 
     resize()
     animRef.current = requestAnimationFrame(animate)
-      const delta = Math.min((now - (lastTimeRef.current || now)) / 16.667, 4)
-      lastTimeRef.current = now
 
     window.addEventListener("resize", resize)
     canvas.addEventListener("mousemove", onMouseMove)
