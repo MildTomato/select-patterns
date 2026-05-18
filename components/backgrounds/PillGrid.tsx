@@ -66,8 +66,8 @@ export default function PillGrid() {
     if (!ctx) return
 
     // Pill grid spacing — wider than shapes because pills are wider
-    const COL_SPACING = 90
-    const ROW_SPACING = 36
+    const COL_SPACING = 52
+    const ROW_SPACING = 22
 
     const wordForCell = (col: number, row: number): string => {
       const h = ((col * 2654435761) ^ (row * 2246822519)) >>> 0
@@ -123,9 +123,9 @@ export default function PillGrid() {
       const [bg, fg] = STEPS[stepIdx]
 
       // Pill dimensions driven by scale
-      const fontSize = Math.round(Math.max(5, s * 13))
-      const paddingX = s * 10
-      const paddingY = s * 5
+      const fontSize = Math.round(Math.max(4, s * 9))
+      const paddingX = s * 7
+      const paddingY = s * 3
       const textW = word.length * fontSize * 0.62 // approximate monospace char width
       const pillW = textW + paddingX * 2
       const pillH = fontSize + paddingY * 2
@@ -258,8 +258,6 @@ export default function PillGrid() {
 
     resize()
     animRef.current = requestAnimationFrame(animate)
-      const delta = Math.min((now - (lastTimeRef.current || now)) / 16.667, 4)
-      lastTimeRef.current = now
 
     window.addEventListener("resize", resize)
     canvas.addEventListener("mousemove", onMouseMove)
