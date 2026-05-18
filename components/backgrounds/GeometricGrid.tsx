@@ -95,17 +95,19 @@ export default function GeometricGrid() {
     }
 
     const drawShape = (x: number, y: number, type: ShapeType, size: number, alpha: number) => {
-      const s = Math.max(0.5, size)
+      const s = Math.max(1, size)
       ctx.globalAlpha = alpha
       ctx.fillStyle = "#ffffff"
       ctx.strokeStyle = "#ffffff"
 
       if (type === 0) {
+        // Filled dot — at size 1 this is a single pixel
         const r = Math.max(0.5, s * 0.38)
         ctx.beginPath()
         ctx.arc(x, y, r, 0, Math.PI * 2)
         ctx.fill()
       } else if (type === 1) {
+        // Open circle ring — at size 1 collapses to a tiny ring
         const r = Math.max(1, s * 0.8)
         const lw = Math.max(0.5, s * 0.18)
         ctx.lineWidth = lw
@@ -113,6 +115,7 @@ export default function GeometricGrid() {
         ctx.arc(x, y, r, 0, Math.PI * 2)
         ctx.stroke()
       } else if (type === 2) {
+        // Solid upward triangle
         const h = s * 1.4
         const hw = s * 0.8
         ctx.beginPath()
@@ -122,6 +125,7 @@ export default function GeometricGrid() {
         ctx.closePath()
         ctx.fill()
       } else {
+        // Plus — at size 1 this is a 1×3 and 3×1 rect
         const arm = Math.max(1, s * 0.9)
         const thick = Math.max(0.5, s * 0.2)
         ctx.beginPath()
@@ -134,7 +138,7 @@ export default function GeometricGrid() {
     }
 
     const MAX_SIZE = 9
-    const MIN_SIZE = 0.5
+    const MIN_SIZE = 1
     const CURSOR_RADIUS = 130
     const CURSOR_BOOST = 8
 
@@ -192,8 +196,6 @@ export default function GeometricGrid() {
         const cursorBoost = cursorFactor * cursorFactor * CURSOR_BOOST
 
         const finalSize = idleSize + cursorBoost
-
-        if (finalSize < 0.4) continue
 
         // Alpha: small shapes are dim (gray), large shapes are bright white
         // Normalise finalSize against MAX_SIZE+CURSOR_BOOST ceiling
