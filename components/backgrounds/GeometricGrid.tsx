@@ -137,14 +137,23 @@ export default function GeometricGrid() {
         ctx.closePath()
         ctx.fill()
       } else if (type === 3) {
-        // Plus / cross
-        const arm = Math.max(1, s * 0.9)
-        const thick = Math.max(0.5, s * 0.2)
+        // Plus / cross — single path to keep it perfectly symmetric at all sizes
+        const arm = s * 0.9
+        const thick = s * 0.22
         ctx.beginPath()
-        ctx.rect(Math.round(x - thick), Math.round(y - arm), Math.round(thick * 2), Math.round(arm * 2))
-        ctx.fill()
-        ctx.beginPath()
-        ctx.rect(Math.round(x - arm), Math.round(y - thick), Math.round(arm * 2), Math.round(thick * 2))
+        ctx.moveTo(x - thick, y - arm)
+        ctx.lineTo(x + thick, y - arm)
+        ctx.lineTo(x + thick, y - thick)
+        ctx.lineTo(x + arm,   y - thick)
+        ctx.lineTo(x + arm,   y + thick)
+        ctx.lineTo(x + thick, y + thick)
+        ctx.lineTo(x + thick, y + arm)
+        ctx.lineTo(x - thick, y + arm)
+        ctx.lineTo(x - thick, y + thick)
+        ctx.lineTo(x - arm,   y + thick)
+        ctx.lineTo(x - arm,   y - thick)
+        ctx.lineTo(x - thick, y - thick)
+        ctx.closePath()
         ctx.fill()
       } else {
         // Filled square
