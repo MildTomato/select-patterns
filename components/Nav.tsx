@@ -13,6 +13,7 @@ const PAGES = [
   { href: "/dither-rows",        label: "DITHER — ROWS" },
   { href: "/dither-rows-color",       label: "DITHER — ROWS COLOR" },
   { href: "/dither-rows-color-light", label: "DITHER — ROWS COLOR LIGHT" },
+  { href: "/dither-rows-cursor",      label: "DITHER — ROWS CURSOR" },
   { href: "/dither-heavy",   label: "DITHER — HEAVY" },
   { href: "/supabase",       label: "SUPABASE GREEN" },
   { href: "/landing",        label: "LANDING DARK" },
