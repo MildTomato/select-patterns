@@ -52,7 +52,6 @@ export default function GeometricGrid() {
   const animRef = useRef<number>(0)
   const ripplesRef = useRef<Ripple[]>([])
   const blobsRef = useRef<Blob[]>([])
-  const lastTimeRef = useRef<number>(0)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -168,16 +167,11 @@ export default function GeometricGrid() {
     const CURSOR_RADIUS = 130
     const CURSOR_BOOST = 8
     const RIPPLE_BOOST = 7
-    const TARGET_FPS = 24
-    const FRAME_INTERVAL = 1000 / TARGET_FPS
 
     const animate = (now: number) => {
       animRef.current = requestAnimationFrame(animate)
 
-      const elapsed = now - (lastTimeRef.current || 0)
-      if (elapsed < FRAME_INTERVAL) return
       // Snap to the nearest frame boundary to avoid drift
-      lastTimeRef.current = now - (elapsed % FRAME_INTERVAL)
 
       const W = window.innerWidth
       const H = window.innerHeight

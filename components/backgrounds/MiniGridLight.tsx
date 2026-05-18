@@ -27,7 +27,6 @@ export default function MiniGridLight() {
   const animRef = useRef<number>(0)
   const ripplesRef = useRef<Ripple[]>([])
   const blobsRef = useRef<Blob[]>([])
-  const lastTimeRef = useRef<number>(0)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -104,13 +103,9 @@ export default function MiniGridLight() {
     }
 
     const MAX_SIZE = 7, CURSOR_RADIUS = 80, CURSOR_BOOST = 6, RIPPLE_BOOST = 5
-    const FRAME_INTERVAL = 1000 / 24
 
     const animate = (now: number) => {
       animRef.current = requestAnimationFrame(animate)
-      const elapsed = now - (lastTimeRef.current || 0)
-      if (elapsed < FRAME_INTERVAL) return
-      lastTimeRef.current = now - (elapsed % FRAME_INTERVAL)
 
       const { w: W, h: H } = getSize()
 

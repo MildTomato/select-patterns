@@ -57,7 +57,6 @@ export default function PillGrid() {
   const animRef = useRef<number>(0)
   const ripplesRef = useRef<Ripple[]>([])
   const blobsRef = useRef<Blob[]>([])
-  const lastTimeRef = useRef<number>(0)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -164,15 +163,10 @@ export default function PillGrid() {
     const CURSOR_RADIUS = 150
     const CURSOR_BOOST = 0.5
     const RIPPLE_BOOST = 0.6
-    const TARGET_FPS = 24
-    const FRAME_INTERVAL = 1000 / TARGET_FPS
 
     const animate = (now: number) => {
       animRef.current = requestAnimationFrame(animate)
 
-      const elapsed = now - (lastTimeRef.current || 0)
-      if (elapsed < FRAME_INTERVAL) return
-      lastTimeRef.current = now - (elapsed % FRAME_INTERVAL)
 
       const W = window.innerWidth
       const H = window.innerHeight
