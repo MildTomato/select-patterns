@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 const PAGES = [
   { href: "/",               label: "GEOMETRIC GRID" },
@@ -26,13 +26,29 @@ const PAGES = [
 export default function Nav() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const [dark, setDark] = useState(false)
   const current = PAGES.find(p => p.href === pathname)
 
+  // Sync on mount from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("theme")
+    const isDark = saved === "dark" || (!saved && window.matchMedia("(prefers-color-scheme: dark)").matches)
+    setDark(isDark)
+    document.documentElement.classList.toggle("dark", isDark)
+  }, [])
+
+  const toggleDark = () => {
+    const next = !dark
+    setDark(next)
+    document.documentElement.classList.toggle("dark", next)
+    localStorage.setItem("theme", next ? "dark" : "light")
+  }
+
   return (
-    <div className="fixed bottom-6 left-6 z-[9999] font-mono">
+    <div className="fixed bottom-6 left-6 z-[9999] font-mono flex flex-col items-start gap-1">
       {/* Dropdown list — opens upward */}
       {open && (
-        <div className="mb-2 flex flex-col gap-1">
+        <div className="mb-1 flex flex-col gap-1">
           {PAGES.map((page) => {
             const active = pathname === page.href
             return (
@@ -54,14 +70,24 @@ export default function Nav() {
         </div>
       )}
 
-      {/* Toggle button */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="text-[10px] tracking-[0.2em] uppercase px-4 py-2.5 bg-black/80 border border-white/30 text-white/70 hover:text-white hover:border-white/60 backdrop-blur-sm transition-colors flex items-center gap-3 whitespace-nowrap"
-      >
-        <span className="text-white/30">{open ? "▼" : "▲"}</span>
-        {current?.label ?? "MENU"}
-      </button>
+      {/* Bottom row — menu + dark toggle */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="text-[10px] tracking-[0.2em] uppercase px-4 py-2.5 bg-black/80 border border-white/30 text-white/70 hover:text-white hover:border-white/60 backdrop-blur-sm transition-colors flex items-center gap-3 whitespace-nowrap"
+        >
+          <span className="text-white/30">{open ? "▼" : "▲"}</span>
+          {current?.label ?? "MENU"}
+        </button>
+
+        <button
+          onClick={toggleDark}
+          title={dark ? "Switch to light" : "Switch to dark"}
+          className="text-[10px] px-3 py-2.5 bg-black/80 border border-white/30 text-white/70 hover:text-white hover:border-white/60 backdrop-blur-sm transition-colors"
+        >
+          {dark ? "○" : "●"}
+        </button>
+      </div>
     </div>
   )
 }
