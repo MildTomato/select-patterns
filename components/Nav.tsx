@@ -7,6 +7,7 @@ import { useState } from "react"
 const PAGES = [
   { href: "/",              label: "GEOMETRIC GRID" },
   { href: "/pills",         label: "PILL GRID" },
+  { href: "/dither",        label: "GLYPH DITHER" },
   { href: "/supabase",      label: "SUPABASE GREEN" },
   { href: "/landing",       label: "LANDING DARK" },
   { href: "/landing-light", label: "LANDING LIGHT" },
