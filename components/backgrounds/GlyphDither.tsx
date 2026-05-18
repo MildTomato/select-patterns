@@ -3,244 +3,164 @@
 import { useEffect, useRef } from "react"
 
 interface Blob {
-  x: number
-  y: number
-  vx: number
-  vy: number
-  angle: number
-  angleSpeed: number
-  radiusX: number
-  radiusY: number
-}
-
-interface Cell {
-  x: number
-  y: number
-  glyph: string
-  smoothInfluence: number
+  x: number; y: number
+  vx: number; vy: number
+  angle: number; angleSpeed: number
+  radiusX: number; radiusY: number
 }
 
 interface Ripple {
-  x: number
-  y: number
-  radius: number
-  speed: number
-  life: number
+  x: number; y: number
+  radius: number; life: number
 }
 
-// Dither threshold matrix (4x4 Bayer) — adds ordered noise to the blob edge
-const BAYER4 = [
+const BAYER = [
   [ 0,  8,  2, 10],
   [12,  4, 14,  6],
   [ 3, 11,  1,  9],
   [15,  7, 13,  5],
 ]
 
-// Glyphs for the two states
-const OUTSIDE_GLYPH = "▲"
-const INSIDE_GLYPHS = ["CONF", "TALK", "OPEN", "LIVE", "NEXT", "CODE", "DATA", "SHIP"]
+const WORDS = ["CONF", "TALK", "OPEN", "CODE", "SHIP", "LIVE", "DEMO", "BUILD", "NEXT", "DATA"]
 
-const SPACING = 28
-
-function glyphForCell(col: number, row: number): string {
+function wordAt(col: number, row: number) {
   const h = ((col * 2654435761) ^ (row * 2246822519)) >>> 0
-  return INSIDE_GLYPHS[h % INSIDE_GLYPHS.length]
+  return WORDS[h % WORDS.length]
 }
 
 export default function GlyphDither() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const mouseRef = useRef({ x: -9999, y: -9999 })
-  const cellsRef = useRef<Cell[]>([])
-  const blobsRef = useRef<Blob[]>([])
-  const ripplesRef = useRef<Ripple[]>([])
-  const animRef = useRef<number>(0)
-  const lastTimeRef = useRef<number>(0)
+  const mouse = useRef({ x: -9999, y: -9999 })
+  const blobs = useRef<Blob[]>([])
+  const ripples = useRef<Ripple[]>([])
+  const raf = useRef(0)
+  const last = useRef(0)
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-    ctx.imageSmoothingEnabled = false
-
-    const initCells = () => {
-      cellsRef.current = []
-      const W = window.innerWidth
-      const H = window.innerHeight
-      const cols = Math.ceil(W / SPACING) + 2
-      const rows = Math.ceil(H / SPACING) + 2
-      for (let r = 0; r <= rows; r++) {
-        for (let c = 0; c <= cols; c++) {
-          cellsRef.current.push({
-            x: Math.round(c * SPACING),
-            y: Math.round(r * SPACING),
-            glyph: glyphForCell(c, r),
-            smoothInfluence: 0,
-          })
-        }
-      }
-    }
-
-    const initBlobs = () => {
-      const W = window.innerWidth
-      const H = window.innerHeight
-      blobsRef.current = [
-        { x: W * 0.35, y: H * 0.40, vx:  0.44, vy:  0.28, angle: 0,   angleSpeed:  0.0044, radiusX: W * 0.55, radiusY: H * 0.58 },
-        { x: W * 0.65, y: H * 0.60, vx: -0.32, vy:  0.40, angle: 1.2, angleSpeed: -0.0036, radiusX: W * 0.50, radiusY: H * 0.52 },
-        { x: W * 0.50, y: H * 0.25, vx:  0.24, vy: -0.48, angle: 2.5, angleSpeed:  0.0052, radiusX: W * 0.45, radiusY: H * 0.48 },
-        { x: W * 0.20, y: H * 0.70, vx: -0.40, vy: -0.24, angle: 0.8, angleSpeed: -0.0040, radiusX: W * 0.52, radiusY: H * 0.55 },
-      ]
-    }
+    const canvas = canvasRef.current!
+    const ctx = canvas.getContext("2d")!
+    const STEP = 28
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1
-      const w = window.innerWidth
-      const h = window.innerHeight
-      canvas.width = Math.round(w * dpr)
-      canvas.height = Math.round(h * dpr)
-      canvas.style.width = w + "px"
-      canvas.style.height = h + "px"
+      const W = window.innerWidth
+      const H = window.innerHeight
+      canvas.width = Math.round(W * dpr)
+      canvas.height = Math.round(H * dpr)
+      canvas.style.width = W + "px"
+      canvas.style.height = H + "px"
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      ctx.imageSmoothingEnabled = false
-      initCells()
-      initBlobs()
+
+      blobs.current = [
+        { x: W*.30, y: H*.40, vx: .40, vy: .28, angle: 0,   angleSpeed:  .004, radiusX: W*.55, radiusY: H*.58 },
+        { x: W*.70, y: H*.55, vx:-.30, vy: .35, angle: 1.2, angleSpeed: -.003, radiusX: W*.48, radiusY: H*.52 },
+        { x: W*.50, y: H*.20, vx: .22, vy:-.42, angle: 2.5, angleSpeed:  .005, radiusX: W*.44, radiusY: H*.46 },
+        { x: W*.18, y: H*.72, vx:-.35, vy:-.22, angle: 0.8, angleSpeed: -.004, radiusX: W*.50, radiusY: H*.54 },
+      ]
     }
 
-    const animate = (now: number) => {
-      animRef.current = requestAnimationFrame(animate)
-      const delta = Math.min((now - (lastTimeRef.current || now)) / 16.667, 4)
-      lastTimeRef.current = now
+    const frame = (now: number) => {
+      raf.current = requestAnimationFrame(frame)
+      const dt = now - (last.current || now - 16)
+      last.current = now
+      const delta = Math.min(dt / 16.667, 4)
 
       const W = window.innerWidth
       const H = window.innerHeight
 
-      for (const blob of blobsRef.current) {
-        blob.x += blob.vx * delta
-        blob.y += blob.vy * delta
-        blob.angle += blob.angleSpeed * delta
-        if (blob.x < 0 || blob.x > W) blob.vx *= -1
-        if (blob.y < 0 || blob.y > H) blob.vy *= -1
+      for (const b of blobs.current) {
+        b.x += b.vx * delta; b.y += b.vy * delta; b.angle += b.angleSpeed * delta
+        if (b.x < 0 || b.x > W) b.vx *= -1
+        if (b.y < 0 || b.y > H) b.vy *= -1
       }
 
-      // Fill entire canvas with light background first
-      ctx.fillStyle = "#f0ece6"
+      ripples.current = ripples.current.filter(r => r.life < 1)
+      for (const r of ripples.current) {
+        r.radius += 10 * delta
+        r.life   += 0.04 * delta
+      }
+
+      // Background
+      ctx.fillStyle = "#e8e4de"
       ctx.fillRect(0, 0, W, H)
 
-      const mx = mouseRef.current.x
-      const my = mouseRef.current.y
-      const CURSOR_RADIUS = 120
+      const mx = mouse.current.x
+      const my = mouse.current.y
+      const COLS = Math.ceil(W / STEP) + 1
+      const ROWS = Math.ceil(H / STEP) + 1
 
-      for (const cell of cellsRef.current) {
-        // Sum blob influence
-        let totalInfluence = 0
-        for (const blob of blobsRef.current) {
-          const dx = cell.x - blob.x
-          const dy = cell.y - blob.y
-          const cos = Math.cos(blob.angle)
-          const sin = Math.sin(blob.angle)
-          const lx = dx * cos + dy * sin
-          const ly = -dx * sin + dy * cos
-          const ed = Math.sqrt((lx / blob.radiusX) ** 2 + (ly / blob.radiusY) ** 2)
-          totalInfluence += Math.max(0, 1 - ed) ** 2
+      for (let row = 0; row <= ROWS; row++) {
+        for (let col = 0; col <= COLS; col++) {
+          const cx = col * STEP
+          const cy = row * STEP
+
+          // Blob influence
+          let inf = 0
+          for (const b of blobs.current) {
+            const dx = cx - b.x, dy = cy - b.y
+            const cos = Math.cos(b.angle), sin = Math.sin(b.angle)
+            const lx = dx*cos + dy*sin
+            const ly = -dx*sin + dy*cos
+            const d = Math.sqrt((lx/b.radiusX)**2 + (ly/b.radiusY)**2)
+            inf += Math.max(0, 1 - d) ** 2
+          }
+          inf = Math.min(1, inf)
+
+          // Cursor
+          const cd = Math.sqrt((cx-mx)**2 + (cy-my)**2)
+          inf = Math.min(1, inf + Math.max(0, 1 - cd/160)**2 * 0.7)
+
+          // Ripples
+          for (const r of ripples.current) {
+            const rd = Math.sqrt((cx-r.x)**2 + (cy-r.y)**2)
+            const df = Math.abs(rd - r.radius)
+            if (df < 22) inf = Math.min(1, inf + (1 - df/22) * (1 - r.life) * 0.9)
+          }
+
+          // Bayer dither
+          const bayer = BAYER[row % 4][col % 4] / 16
+          const inside = inf > 0.32 + (bayer - 0.5) * 0.30
+
+          if (inside) {
+            // Black tile + white word
+            ctx.fillStyle = "#111111"
+            ctx.fillRect(cx - STEP/2, cy - STEP/2, STEP, STEP)
+            ctx.fillStyle = "#ffffff"
+            ctx.font = "bold 8px monospace"
+            ctx.textAlign = "center"
+            ctx.textBaseline = "middle"
+            ctx.fillText(wordAt(col, row), cx, cy)
+          } else {
+            // Small dark triangle on cream
+            const s = 4
+            ctx.fillStyle = "#222222"
+            ctx.beginPath()
+            ctx.moveTo(cx, cy - s)
+            ctx.lineTo(cx + s, cy + s * 0.7)
+            ctx.lineTo(cx - s, cy + s * 0.7)
+            ctx.closePath()
+            ctx.fill()
+          }
         }
-        const rawInfluence = Math.min(1, totalInfluence)
-
-        // Cursor boost
-        const cdx = cell.x - mx
-        const cdy = cell.y - my
-        const cursorInfluence = Math.max(0, 1 - Math.sqrt(cdx * cdx + cdy * cdy) / CURSOR_RADIUS)
-
-        // Ripple boost
-        let rippleInfluence = 0
-        for (const ripple of ripplesRef.current) {
-          const rdist = Math.sqrt((cell.x - ripple.x) ** 2 + (cell.y - ripple.y) ** 2)
-          const df = Math.abs(rdist - ripple.radius)
-          if (df < 20) rippleInfluence = Math.max(rippleInfluence, (1 - df / 20) * (1 - ripple.life))
-        }
-
-        // Smooth the influence for gradual transitions
-        const target = Math.min(1, rawInfluence + cursorInfluence * 0.8 + rippleInfluence)
-        // On first frame delta is 0 — snap directly to avoid blank screen
-        if (lastTimeRef.current === 0 || delta === 0) {
-          cell.smoothInfluence = target
-        } else {
-          cell.smoothInfluence += (target - cell.smoothInfluence) * 0.12 * delta
-        }
-
-        // Bayer dither threshold — adds noise to the boundary
-        const col = Math.floor(cell.x / SPACING) % 4
-        const row = Math.floor(cell.y / SPACING) % 4
-        const bayerVal = BAYER4[row][col] / 16 // 0..0.9375
-        // Map smooth influence to dithered binary state
-        const THRESHOLD = 0.30
-        const ditherNoise = (bayerVal - 0.5) * 0.35
-        const inside = cell.smoothInfluence + ditherNoise > THRESHOLD
-
-        if (inside) {
-          // INSIDE: black tile, white glyph — tile fills the full cell
-          const half = SPACING / 2
-          ctx.fillStyle = "#0f0f0f"
-          ctx.fillRect(cell.x - half, cell.y - half, SPACING, SPACING)
-          ctx.fillStyle = "#ffffff"
-          ctx.font = "bold 9px monospace"
-          ctx.textAlign = "center"
-          ctx.textBaseline = "middle"
-          ctx.fillText(cell.glyph, cell.x, cell.y)
-        } else {
-          // OUTSIDE: light background, small dark triangle
-          ctx.fillStyle = "#1a1a1a"
-          const ts = 5
-          ctx.beginPath()
-          ctx.moveTo(cell.x, cell.y - ts)
-          ctx.lineTo(cell.x + ts * 0.8, cell.y + ts * 0.6)
-          ctx.lineTo(cell.x - ts * 0.8, cell.y + ts * 0.6)
-          ctx.closePath()
-          ctx.fill()
-        }
-      }
-
-      // Advance ripples
-      ripplesRef.current = ripplesRef.current.filter(r => r.life < 1)
-      for (const ripple of ripplesRef.current) {
-        ripple.radius += ripple.speed * delta
-        ripple.life += 0.03 * delta
-      }
-    }
-
-    const onMouseMove = (e: MouseEvent) => {
-      mouseRef.current = { x: e.clientX, y: e.clientY }
-    }
-    const onMouseLeave = () => {
-      mouseRef.current = { x: -9999, y: -9999 }
-    }
-    const onClick = (e: MouseEvent) => {
-      for (let i = 0; i < 2; i++) {
-        ripplesRef.current.push({
-          x: e.clientX, y: e.clientY,
-          radius: i * 25, speed: 12, life: 0,
-        })
       }
     }
 
     resize()
+    raf.current = requestAnimationFrame(frame)
+
     window.addEventListener("resize", resize)
-    canvas.addEventListener("mousemove", onMouseMove)
-    canvas.addEventListener("mouseleave", onMouseLeave)
-    canvas.addEventListener("click", onClick)
+    canvas.addEventListener("mousemove", e => { mouse.current = { x: e.clientX, y: e.clientY } })
+    canvas.addEventListener("mouseleave", () => { mouse.current = { x: -9999, y: -9999 } })
+    canvas.addEventListener("click", e => {
+      for (let i = 0; i < 2; i++)
+        ripples.current.push({ x: e.clientX, y: e.clientY, radius: i * 28, life: 0 })
+    })
 
     return () => {
-      cancelAnimationFrame(animRef.current)
+      cancelAnimationFrame(raf.current)
       window.removeEventListener("resize", resize)
-      canvas.removeEventListener("mousemove", onMouseMove)
-      canvas.removeEventListener("mouseleave", onMouseLeave)
-      canvas.removeEventListener("click", onClick)
     }
   }, [])
 
-  return (
-    <canvas
-      ref={canvasRef}
-      className="absolute inset-0 w-full h-full cursor-crosshair"
-    />
-  )
+  return <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" />
 }
