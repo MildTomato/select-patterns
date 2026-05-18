@@ -45,19 +45,6 @@ export default function LandingPage() {
   return (
     <main className="bg-black min-h-screen font-mono text-white">
 
-      {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 border-b border-white/10 bg-black/80 backdrop-blur-sm">
-        <span className="text-xs tracking-[0.3em] text-white/50">/ CONF &apos;26</span>
-        <div className="flex items-center gap-8">
-          <a href="#talks" className="text-xs tracking-[0.2em] text-white/40 hover:text-white transition-colors">SCHEDULE</a>
-          <a href="#speakers" className="text-xs tracking-[0.2em] text-white/40 hover:text-white transition-colors">SPEAKERS</a>
-          <a href="#" className="text-xs tracking-[0.2em] text-white/40 hover:text-white transition-colors">VENUE</a>
-        </div>
-        <button className="text-xs tracking-[0.2em] border border-white/30 px-4 py-2 hover:bg-white hover:text-black transition-colors">
-          GET TICKETS
-        </button>
-      </nav>
-
       {/* Hero — full bleed canvas */}
       <section className="relative w-full h-screen">
         <GeometricGrid />

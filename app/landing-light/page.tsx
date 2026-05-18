@@ -44,19 +44,6 @@ export default function LandingLightPage() {
   return (
     <main className="bg-[#f5f0eb] min-h-screen font-mono text-[#1a1410]">
 
-      {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 border-b border-[#1a1410]/10 bg-[#f5f0eb]/90 backdrop-blur-sm">
-        <span className="text-xs tracking-[0.3em] text-[#1a1410]/40">/ CONF &apos;26</span>
-        <div className="flex items-center gap-8">
-          <a href="#talks" className="text-xs tracking-[0.2em] text-[#1a1410]/40 hover:text-[#1a1410] transition-colors">SCHEDULE</a>
-          <a href="#speakers" className="text-xs tracking-[0.2em] text-[#1a1410]/40 hover:text-[#1a1410] transition-colors">SPEAKERS</a>
-          <a href="#" className="text-xs tracking-[0.2em] text-[#1a1410]/40 hover:text-[#1a1410] transition-colors">VENUE</a>
-        </div>
-        <button className="text-xs tracking-[0.2em] border border-[#1a1410]/30 px-4 py-2 hover:bg-[#1a1410] hover:text-[#f5f0eb] transition-colors">
-          GET TICKETS
-        </button>
-      </nav>
-
       {/* Hero — full bleed canvas */}
       <section className="relative w-full h-screen overflow-hidden">
         <div className="absolute inset-0">

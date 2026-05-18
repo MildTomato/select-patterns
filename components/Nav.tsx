@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useState } from "react"
 
 const PAGES = [
   { href: "/",              label: "GEOMETRIC GRID" },
@@ -13,26 +14,43 @@ const PAGES = [
 
 export default function Nav() {
   const pathname = usePathname()
+  const [open, setOpen] = useState(false)
+  const current = PAGES.find(p => p.href === pathname)
 
   return (
-    <nav className="absolute top-0 left-0 right-0 z-30 flex items-center gap-0 border-b border-white/10 pointer-events-auto">
-      {PAGES.map((page) => {
-        const active = pathname === page.href
-        return (
-          <Link
-            key={page.href}
-            href={page.href}
-            className={[
-              "font-mono text-[10px] tracking-[0.25em] uppercase px-5 py-4 border-r border-white/10 transition-colors",
-              active
-                ? "text-white bg-white/10"
-                : "text-white/30 hover:text-white/70 hover:bg-white/5",
-            ].join(" ")}
-          >
-            {page.label}
-          </Link>
-        )
-      })}
-    </nav>
+    <div className="fixed bottom-6 left-6 z-[9999] font-mono">
+      {/* Dropdown list — opens upward */}
+      {open && (
+        <div className="mb-2 flex flex-col gap-1">
+          {PAGES.map((page) => {
+            const active = pathname === page.href
+            return (
+              <Link
+                key={page.href}
+                href={page.href}
+                onClick={() => setOpen(false)}
+                className={[
+                  "text-[10px] tracking-[0.2em] uppercase px-4 py-2.5 border transition-colors whitespace-nowrap",
+                  active
+                    ? "bg-white text-black border-white"
+                    : "bg-black/80 text-white/50 border-white/20 hover:text-white hover:border-white/60 backdrop-blur-sm",
+                ].join(" ")}
+              >
+                {page.label}
+              </Link>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Toggle button */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="text-[10px] tracking-[0.2em] uppercase px-4 py-2.5 bg-black/80 border border-white/30 text-white/70 hover:text-white hover:border-white/60 backdrop-blur-sm transition-colors flex items-center gap-3 whitespace-nowrap"
+      >
+        <span className="text-white/30">{open ? "▼" : "▲"}</span>
+        {current?.label ?? "MENU"}
+      </button>
+    </div>
   )
 }
