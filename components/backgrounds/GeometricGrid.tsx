@@ -13,8 +13,10 @@ interface Cell {
 interface Ripple {
   x: number
   y: number
-  r: number
-  life: number // 0→1 progress
+  radius: number   // current leading edge radius
+  speed: number    // px per frame
+  width: number    // thickness of the wave band
+  life: number     // 0→1, used to fade the boost as it travels
 }
 
 interface Blob {
@@ -143,6 +145,7 @@ export default function GeometricGrid() {
     const MAX_SIZE = 9
     const CURSOR_RADIUS = 130
     const CURSOR_BOOST = 8
+    const RIPPLE_BOOST = 7
     const TARGET_FPS = 12
     const FRAME_INTERVAL = 1000 / TARGET_FPS
 
@@ -192,26 +195,40 @@ export default function GeometricGrid() {
         const cursorFactor = Math.max(0, 1 - Math.sqrt(cdx * cdx + cdy * cdy) / CURSOR_RADIUS)
         const cursorBoost = cursorFactor * cursorFactor * CURSOR_BOOST
 
-        // Size driven by blob influence + cursor
-        const size = 1 + clamped * (MAX_SIZE - 1) + cursorBoost
+        // Ripple boost — check if any ripple wavefront is passing through this cell
+        let rippleBoost = 0
+        let rippleShade = 0
+        for (const ripple of ripplesRef.current) {
+          const rdx = cell.x - ripple.x
+          const rdy = cell.y - ripple.y
+          const cellDist = Math.sqrt(rdx * rdx + rdy * rdy)
+          const distFromFront = Math.abs(cellDist - ripple.radius)
+          if (distFromFront < ripple.width) {
+            // Smooth bell across the wave band
+            const wave = 1 - distFromFront / ripple.width
+            const decay = 1 - ripple.life
+            rippleBoost = Math.max(rippleBoost, wave * decay * RIPPLE_BOOST)
+            rippleShade = Math.max(rippleShade, wave * decay)
+          }
+        }
 
-        const color = shadeForInfluence(clamped, cursorBoost)
+        // Size driven by blob influence + cursor + ripple
+        const size = 1 + clamped * (MAX_SIZE - 1) + cursorBoost + rippleBoost
+
+        // Color — ripple overrides to a lighter shade when passing through
+        let color = shadeForInfluence(clamped, cursorBoost)
+        if (rippleShade > 0.5) color = SHADES[4]
+        else if (rippleShade > 0.25) color = SHADES[3]
+        else if (rippleShade > 0.08) color = SHADES[2]
 
         drawShape(cell.x, cell.y, cell.type, size, color)
       }
 
-      // Ripples — drawn as white strokes, fading out purely by line thinning
+      // Advance ripples — kill when wavefront has travelled far enough
       ripplesRef.current = ripplesRef.current.filter((r) => r.life < 1)
       for (const ripple of ripplesRef.current) {
-        ripple.life += 0.025
-        const radius = ripple.r + ripple.life * 200
-        const opacity = 1 - ripple.life
-        const ov = Math.round(opacity * 255).toString(16).padStart(2, "0")
-        ctx.strokeStyle = `#${ov}${ov}${ov}`
-        ctx.lineWidth = 1
-        ctx.beginPath()
-        ctx.arc(ripple.x, ripple.y, radius, 0, Math.PI * 2)
-        ctx.stroke()
+        ripple.radius += ripple.speed
+        ripple.life += 0.03
       }
     }
 
@@ -222,8 +239,16 @@ export default function GeometricGrid() {
       mouseRef.current = { x: -9999, y: -9999 }
     }
     const onClick = (e: MouseEvent) => {
-      for (let i = 0; i < 3; i++) {
-        ripplesRef.current.push({ x: e.clientX, y: e.clientY, r: i * 25, life: i * 0.1 })
+      // Each click spawns 2 staggered waves — slightly offset start radii
+      for (let i = 0; i < 2; i++) {
+        ripplesRef.current.push({
+          x: e.clientX,
+          y: e.clientY,
+          radius: i * 30,
+          speed: 18,
+          width: 28,
+          life: 0,
+        })
       }
     }
 
