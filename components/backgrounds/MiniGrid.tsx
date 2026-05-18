@@ -10,12 +10,12 @@ interface Ripple { x: number; y: number; radius: number; speed: number; width: n
 interface Blob { x: number; y: number; vx: number; vy: number; angle: number; angleSpeed: number; radiusX: number; radiusY: number }
 
 const SHADES = ["#2a2a2a", "#666666", "#999999", "#cccccc", "#ffffff"]
-function shade(clamped: number, cursorBoost: number): string {
-  if (cursorBoost > 0) return SHADES[4]
-  if (clamped > 0.65) return SHADES[4]
-  if (clamped > 0.35) return SHADES[3]
-  if (clamped > 0.15) return SHADES[2]
-  if (clamped > 0.05) return SHADES[1]
+function shade(clamped: number, cursorNorm: number): string {
+  const combined = Math.min(1, clamped + cursorNorm * 0.6)
+  if (combined > 0.65) return SHADES[4]
+  if (combined > 0.35) return SHADES[3]
+  if (combined > 0.15) return SHADES[2]
+  if (combined > 0.05) return SHADES[1]
   return SHADES[0]
 }
 
@@ -140,7 +140,7 @@ export default function MiniGrid() {
         const clamped = Math.min(1, totalInfluence)
         const cdx = cell.x - mx, cdy = cell.y - my
         const cursorFactor = Math.max(0, 1 - Math.sqrt(cdx * cdx + cdy * cdy) / CURSOR_RADIUS)
-        const cursorBoost = cursorFactor * cursorFactor * CURSOR_BOOST
+        const cursorBoost = cursorFactor * CURSOR_BOOST
 
         let rippleBoost = 0, rippleShade = 0
         for (const ripple of ripplesRef.current) {
@@ -154,7 +154,7 @@ export default function MiniGrid() {
         }
 
         const size = 1 + clamped * (MAX_SIZE - 1) + cursorBoost + rippleBoost
-        let color = shade(clamped, cursorBoost)
+        let color = shade(clamped, cursorFactor)
         if (rippleShade > 0.5) color = SHADES[4]
         else if (rippleShade > 0.25) color = SHADES[3]
         else if (rippleShade > 0.08) color = SHADES[2]

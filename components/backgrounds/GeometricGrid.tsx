@@ -33,12 +33,12 @@ interface Blob {
 // 5 discrete steps from almost-black to pure white — no alpha, no opacity
 const SHADES = ["#2a2a2a", "#666666", "#999999", "#cccccc", "#ffffff"]
 
-function shadeForInfluence(clamped: number, cursorBoost: number): string {
-  if (cursorBoost > 0) return SHADES[4]
-  if (clamped > 0.65) return SHADES[4]
-  if (clamped > 0.35) return SHADES[3]
-  if (clamped > 0.15) return SHADES[2]
-  if (clamped > 0.05) return SHADES[1]
+function shadeForInfluence(clamped: number, cursorNorm: number): string {
+  const combined = Math.min(1, clamped + cursorNorm * 0.6)
+  if (combined > 0.65) return SHADES[4]
+  if (combined > 0.35) return SHADES[3]
+  if (combined > 0.15) return SHADES[2]
+  if (combined > 0.05) return SHADES[1]
   return SHADES[0]
 }
 
@@ -215,7 +215,7 @@ export default function GeometricGrid() {
         const cdx = cell.x - mx
         const cdy = cell.y - my
         const cursorFactor = Math.max(0, 1 - Math.sqrt(cdx * cdx + cdy * cdy) / CURSOR_RADIUS)
-        const cursorBoost = cursorFactor * cursorFactor * CURSOR_BOOST
+        const cursorBoost = cursorFactor * CURSOR_BOOST
 
         // Ripple boost — check if any ripple wavefront is passing through this cell
         let rippleBoost = 0
@@ -226,7 +226,6 @@ export default function GeometricGrid() {
           const cellDist = Math.sqrt(rdx * rdx + rdy * rdy)
           const distFromFront = Math.abs(cellDist - ripple.radius)
           if (distFromFront < ripple.width) {
-            // Smooth bell across the wave band
             const wave = 1 - distFromFront / ripple.width
             const decay = 1 - ripple.life
             rippleBoost = Math.max(rippleBoost, wave * decay * RIPPLE_BOOST)
@@ -234,11 +233,8 @@ export default function GeometricGrid() {
           }
         }
 
-        // Size driven by blob influence + cursor + ripple
         const size = 1 + clamped * (MAX_SIZE - 1) + cursorBoost + rippleBoost
-
-        // Color — ripple overrides to a lighter shade when passing through
-        let color = shadeForInfluence(clamped, cursorBoost)
+        let color = shadeForInfluence(clamped, cursorFactor)
         if (rippleShade > 0.5) color = SHADES[4]
         else if (rippleShade > 0.25) color = SHADES[3]
         else if (rippleShade > 0.08) color = SHADES[2]
