@@ -85,10 +85,10 @@ export default function GlyphDither() {
       const W = window.innerWidth
       const H = window.innerHeight
       blobsRef.current = [
-        { x: W * 0.35, y: H * 0.40, vx:  0.44, vy:  0.28, angle: 0,   angleSpeed:  0.0044, radiusX: W * 0.38, radiusY: H * 0.42 },
-        { x: W * 0.65, y: H * 0.60, vx: -0.32, vy:  0.40, angle: 1.2, angleSpeed: -0.0036, radiusX: W * 0.32, radiusY: H * 0.36 },
-        { x: W * 0.50, y: H * 0.25, vx:  0.24, vy: -0.48, angle: 2.5, angleSpeed:  0.0052, radiusX: W * 0.28, radiusY: H * 0.32 },
-        { x: W * 0.20, y: H * 0.70, vx: -0.40, vy: -0.24, angle: 0.8, angleSpeed: -0.0040, radiusX: W * 0.35, radiusY: H * 0.38 },
+        { x: W * 0.35, y: H * 0.40, vx:  0.44, vy:  0.28, angle: 0,   angleSpeed:  0.0044, radiusX: W * 0.55, radiusY: H * 0.58 },
+        { x: W * 0.65, y: H * 0.60, vx: -0.32, vy:  0.40, angle: 1.2, angleSpeed: -0.0036, radiusX: W * 0.50, radiusY: H * 0.52 },
+        { x: W * 0.50, y: H * 0.25, vx:  0.24, vy: -0.48, angle: 2.5, angleSpeed:  0.0052, radiusX: W * 0.45, radiusY: H * 0.48 },
+        { x: W * 0.20, y: H * 0.70, vx: -0.40, vy: -0.24, angle: 0.8, angleSpeed: -0.0040, radiusX: W * 0.52, radiusY: H * 0.55 },
       ]
     }
 
@@ -122,7 +122,7 @@ export default function GlyphDither() {
         if (blob.y < 0 || blob.y > H) blob.vy *= -1
       }
 
-      // Clear to light background
+      // Fill entire canvas with light background first
       ctx.fillStyle = "#f0ece6"
       ctx.fillRect(0, 0, W, H)
 
@@ -160,8 +160,8 @@ export default function GlyphDither() {
 
         // Smooth the influence for gradual transitions
         const target = Math.min(1, rawInfluence + cursorInfluence * 0.8 + rippleInfluence)
-        // Fast init on first frame — if never set, snap straight there
-        if (cell.smoothInfluence === 0 && target > 0) {
+        // On first frame delta is 0 — snap directly to avoid blank screen
+        if (lastTimeRef.current === 0 || delta === 0) {
           cell.smoothInfluence = target
         } else {
           cell.smoothInfluence += (target - cell.smoothInfluence) * 0.12 * delta
@@ -172,7 +172,7 @@ export default function GlyphDither() {
         const row = Math.floor(cell.y / SPACING) % 4
         const bayerVal = BAYER4[row][col] / 16 // 0..0.9375
         // Map smooth influence to dithered binary state
-        const THRESHOLD = 0.45
+        const THRESHOLD = 0.30
         const ditherNoise = (bayerVal - 0.5) * 0.35
         const inside = cell.smoothInfluence + ditherNoise > THRESHOLD
 
