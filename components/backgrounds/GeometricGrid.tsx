@@ -28,8 +28,17 @@ interface Blob {
   radiusY: number
 }
 
-const DIM = "#2a2a2a"
-const BRIGHT = "#ffffff"
+// 5 discrete steps from almost-black to pure white — no alpha, no opacity
+const SHADES = ["#2a2a2a", "#666666", "#999999", "#cccccc", "#ffffff"]
+
+function shadeForInfluence(clamped: number, cursorBoost: number): string {
+  if (cursorBoost > 0) return SHADES[4]
+  if (clamped > 0.65) return SHADES[4]
+  if (clamped > 0.35) return SHADES[3]
+  if (clamped > 0.15) return SHADES[2]
+  if (clamped > 0.05) return SHADES[1]
+  return SHADES[0]
+}
 
 export default function GeometricGrid() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -186,10 +195,7 @@ export default function GeometricGrid() {
         // Size driven by blob influence + cursor
         const size = 1 + clamped * (MAX_SIZE - 1) + cursorBoost
 
-        // Color: either full white (active) or flat dim (inactive) — NO intermediate values
-        // Active means meaningfully inside a blob or near cursor
-        const isActive = clamped > 0.08 || cursorBoost > 0
-        const color = isActive ? BRIGHT : DIM
+        const color = shadeForInfluence(clamped, cursorBoost)
 
         drawShape(cell.x, cell.y, cell.type, size, color)
       }
@@ -207,8 +213,6 @@ export default function GeometricGrid() {
         ctx.arc(ripple.x, ripple.y, radius, 0, Math.PI * 2)
         ctx.stroke()
       }
-
-      animRef.current = requestAnimationFrame(animate)
     }
 
     const onMouseMove = (e: MouseEvent) => {
