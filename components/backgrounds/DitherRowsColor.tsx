@@ -9,16 +9,16 @@ interface Ripple { x:number;y:number;radius:number;life:number }
 const WORDS = ["CONF","TALK","OPEN","CODE","SHIP","LIVE","DEMO","BUILD","NEXT","DATA"]
 function wordAt(col:number,row:number){ const h=((col*2654435761)^(row*2246822519))>>>0; return WORDS[h%WORDS.length] }
 
-// Each row cycles through this palette
+// Each row cycles through Supabase green shades
 const ROW_COLORS = [
-  "#3ECF8E", // supabase green
-  "#2563eb", // blue
-  "#dc2626", // red
-  "#d97706", // amber
-  "#7c3aed", // violet
-  "#0891b2", // cyan
-  "#be185d", // pink
-  "#65a30d", // lime
+  "#0d1f17",
+  "#1a4731",
+  "#276749",
+  "#3ECF8E",
+  "#5cd9a0",
+  "#a8f0d4",
+  "#276749",
+  "#1a4731",
 ]
 
 export default function DitherRowsColor() {
@@ -61,7 +61,7 @@ export default function DitherRowsColor() {
       ripplesR.current=ripplesR.current.filter(r=>r.life<1)
       for(const r of ripplesR.current){r.radius+=10*delta;r.life+=0.04*delta}
 
-      ctx.fillStyle="#f8f8f8"; ctx.fillRect(0,0,W,H)
+      ctx.fillStyle="#060e0a"; ctx.fillRect(0,0,W,H)
 
       const mx=mouse.current.x,my=mouse.current.y
       const COLS=Math.ceil(W/STEP)+1,ROWS=Math.ceil(H/STEP)+1
