@@ -56,10 +56,10 @@ export default function MiniGridLight() {
 
     const initBlobs = (w: number, h: number) => {
       blobsRef.current = [
-        { x: w * 0.35, y: h * 0.40, vx:  1.5, vy:  1.0, angle: 0,   angleSpeed:  0.022, radiusX: w * 0.52, radiusY: h * 0.58 },
-        { x: w * 0.65, y: h * 0.60, vx: -1.1, vy:  1.4, angle: 1.2, angleSpeed: -0.018, radiusX: w * 0.48, radiusY: h * 0.54 },
-        { x: w * 0.50, y: h * 0.25, vx:  0.8, vy: -1.6, angle: 2.5, angleSpeed:  0.026, radiusX: w * 0.42, radiusY: h * 0.46 },
-        { x: w * 0.20, y: h * 0.70, vx: -1.4, vy: -0.8, angle: 0.8, angleSpeed: -0.020, radiusX: w * 0.50, radiusY: h * 0.52 },
+        { x: w * 0.35, y: h * 0.40, vx:  0.3, vy:  0.2, angle: 0,   angleSpeed:  0.0044, radiusX: w * 0.52, radiusY: h * 0.58 },
+        { x: w * 0.65, y: h * 0.60, vx: -0.22, vy:  0.28, angle: 1.2, angleSpeed: -0.0036, radiusX: w * 0.48, radiusY: h * 0.54 },
+        { x: w * 0.50, y: h * 0.25, vx:  0.16, vy: -0.32, angle: 2.5, angleSpeed:  0.0052, radiusX: w * 0.42, radiusY: h * 0.46 },
+        { x: w * 0.20, y: h * 0.70, vx: -0.28, vy: -0.16, angle: 0.8, angleSpeed: -0.004, radiusX: w * 0.50, radiusY: h * 0.52 },
       ]
     }
 
@@ -169,7 +169,7 @@ export default function MiniGridLight() {
     const onClick = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect()
       for (let i = 0; i < 2; i++)
-        ripplesRef.current.push({ x: e.clientX - rect.left, y: e.clientY - rect.top, radius: i * 20, speed: 10, width: 10, life: 0 })
+        ripplesRef.current.push({ x: e.clientX - rect.left, y: e.clientY - rect.top, radius: i * 20, speed: 2.0, width: 10, life: 0 })
     }
 
     resize()

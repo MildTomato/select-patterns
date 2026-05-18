@@ -97,10 +97,10 @@ export default function PillGrid() {
       const W = window.innerWidth
       const H = window.innerHeight
       blobsRef.current = [
-        { x: W * 0.35, y: H * 0.40, vx:  2.2, vy:  1.4, angle: 0,   angleSpeed:  0.022, radiusX: W * 0.52, radiusY: H * 0.58 },
-        { x: W * 0.65, y: H * 0.60, vx: -1.6, vy:  2.0, angle: 1.2, angleSpeed: -0.018, radiusX: W * 0.48, radiusY: H * 0.54 },
-        { x: W * 0.50, y: H * 0.25, vx:  1.2, vy: -2.4, angle: 2.5, angleSpeed:  0.026, radiusX: W * 0.42, radiusY: H * 0.46 },
-        { x: W * 0.20, y: H * 0.70, vx: -2.0, vy: -1.2, angle: 0.8, angleSpeed: -0.020, radiusX: W * 0.50, radiusY: H * 0.52 },
+        { x: W * 0.35, y: H * 0.40, vx:  0.44, vy:  0.28, angle: 0,   angleSpeed:  0.0044, radiusX: W * 0.52, radiusY: H * 0.58 },
+        { x: W * 0.65, y: H * 0.60, vx: -0.32, vy:  0.4, angle: 1.2, angleSpeed: -0.0036, radiusX: W * 0.48, radiusY: H * 0.54 },
+        { x: W * 0.50, y: H * 0.25, vx:  0.24, vy: -0.48, angle: 2.5, angleSpeed:  0.0052, radiusX: W * 0.42, radiusY: H * 0.46 },
+        { x: W * 0.20, y: H * 0.70, vx: -0.4, vy: -0.24, angle: 0.8, angleSpeed: -0.004, radiusX: W * 0.50, radiusY: H * 0.52 },
       ]
     }
 
@@ -249,7 +249,7 @@ export default function PillGrid() {
           x: e.clientX,
           y: e.clientY,
           radius: i * 20,
-          speed: 14,
+          speed: 2.8,
           width: 14,
           life: 0,
         })
