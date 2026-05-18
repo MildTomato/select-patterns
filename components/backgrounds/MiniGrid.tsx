@@ -175,8 +175,6 @@ export default function MiniGrid() {
     const ro = new ResizeObserver(resize)
     if (canvas.parentElement) ro.observe(canvas.parentElement)
     animRef.current = requestAnimationFrame(animate)
-      const delta = Math.min((now - (lastTimeRef.current || now)) / 16.667, 4)
-      lastTimeRef.current = now
     canvas.addEventListener("mousemove", onMouseMove)
     canvas.addEventListener("mouseleave", onMouseLeave)
     canvas.addEventListener("click", onClick)
