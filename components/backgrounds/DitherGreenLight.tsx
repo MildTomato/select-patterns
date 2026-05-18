@@ -19,7 +19,15 @@ function tileColor(inf: number): string {
   return TILE_COLORS[4]
 }
 
-export default function DitherGreenLight() {
+// Dot colors for inactive cells — tinted green based on proximity, fading to near-invisible
+const DOT_COLORS = ["#d8d4ce","#b8d4c8","#8ec8b0","#5db896","#3ECF8E"]
+function dotColor(inf: number): string {
+  if (inf > 0.25) return DOT_COLORS[4]
+  if (inf > 0.16) return DOT_COLORS[3]
+  if (inf > 0.10) return DOT_COLORS[2]
+  if (inf > 0.05) return DOT_COLORS[1]
+  return DOT_COLORS[0]
+}
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mouse = useRef({x:-9999,y:-9999})
   const blobsR = useRef<Blob[]>([])
@@ -94,8 +102,9 @@ export default function DitherGreenLight() {
             ctx.textAlign="center"; ctx.textBaseline="middle"
             ctx.fillText(wordAt(col,row),cx,cy)
           } else {
-            ctx.fillStyle="#1a1a1a"
-            ctx.beginPath(); ctx.arc(cx,cy,1.5,0,Math.PI*2); ctx.fill()
+            const dotR = 1 + inf * 3
+            ctx.fillStyle = dotColor(inf)
+            ctx.beginPath(); ctx.arc(cx,cy,dotR,0,Math.PI*2); ctx.fill()
           }
         }
       }
