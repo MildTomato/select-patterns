@@ -28,6 +28,8 @@ function dotColor(inf: number): string {
   if (inf > 0.05) return DOT_COLORS[1]
   return DOT_COLORS[0]
 }
+
+export default function DitherGreenLight() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mouse = useRef({x:-9999,y:-9999})
   const blobsR = useRef<Blob[]>([])
