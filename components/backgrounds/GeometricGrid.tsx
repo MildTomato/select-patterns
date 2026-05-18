@@ -8,6 +8,7 @@ interface Cell {
   x: number
   y: number
   type: ExtendedShapeType
+  smoothCursor: number  // lerped cursor influence, 0→1
 }
 
 interface Ripple {
@@ -79,6 +80,7 @@ export default function GeometricGrid() {
             x: Math.round(c * SPACING),
             y: Math.round(r * SPACING),
             type: shapeForCell(c, r),
+            smoothCursor: 0,
           })
         }
       }
@@ -206,10 +208,13 @@ export default function GeometricGrid() {
         }
         const clamped = Math.min(1, totalInfluence)
 
-        // Cursor proximity
+        // Cursor proximity — lerp smoothCursor toward target for slow build/fade
         const cdx = cell.x - mx
         const cdy = cell.y - my
-        const cursorFactor = Math.max(0, 1 - Math.sqrt(cdx * cdx + cdy * cdy) / CURSOR_RADIUS)
+        const cursorTarget = Math.max(0, 1 - Math.sqrt(cdx * cdx + cdy * cdy) / CURSOR_RADIUS)
+        const lerpSpeed = 0.04 * delta
+        cell.smoothCursor += (cursorTarget - cell.smoothCursor) * lerpSpeed
+        const cursorFactor = cell.smoothCursor
         const cursorBoost = cursorFactor * CURSOR_BOOST
 
         // Ripple boost — check if any ripple wavefront is passing through this cell

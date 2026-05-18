@@ -6,6 +6,7 @@ interface Cell {
   x: number
   y: number
   word: string
+  smoothCursor: number
 }
 
 interface Ripple {
@@ -88,6 +89,7 @@ export default function PillGrid() {
             x: Math.round(c * COL_SPACING + offset),
             y: Math.round(r * ROW_SPACING),
             word: wordForCell(c, r),
+            smoothCursor: 0,
           })
         }
       }
@@ -205,7 +207,9 @@ export default function PillGrid() {
 
         const cdx = cell.x - mx
         const cdy = cell.y - my
-        const cursorFactor = Math.max(0, 1 - Math.sqrt(cdx * cdx + cdy * cdy) / CURSOR_RADIUS)
+        const cursorTarget = Math.max(0, 1 - Math.sqrt(cdx * cdx + cdy * cdy) / CURSOR_RADIUS)
+        cell.smoothCursor += (cursorTarget - cell.smoothCursor) * 0.04 * delta
+        const cursorFactor = cell.smoothCursor
 
         // Ripple
         let rippleBoost = 0
