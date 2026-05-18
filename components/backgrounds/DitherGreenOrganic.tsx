@@ -26,7 +26,7 @@ function tileColor(inf: number): string {
   return TILE_COLORS[4]
 }
 
-const DOT_COLORS = ["#d8d4ce","#b8d4c8","#8ec8b0","#5db896","#3ECF8E"]
+const DOT_COLORS = ["#b8b4ae","#b8d4c8","#8ec8b0","#5db896","#3ECF8E"]
 function dotColor(inf: number): string {
   if (inf > 0.25) return DOT_COLORS[4]
   if (inf > 0.16) return DOT_COLORS[3]
@@ -53,8 +53,8 @@ function blobInfluence(blob: Blob, px: number, py: number, t: number): number {
   const i1 = (i0 + 1) % N
   const frac = rawIdx - Math.floor(rawIdx)
 
-  const r0 = blob.spokes[i0] * (1 + 0.25 * Math.sin(t * blob.spokeSpeed + blob.spokePhases[i0]))
-  const r1 = blob.spokes[i1] * (1 + 0.25 * Math.sin(t * blob.spokeSpeed + blob.spokePhases[i1]))
+  const r0 = Math.max(20, blob.spokes[i0] * (1 + 0.22 * Math.sin(t * blob.spokeSpeed + blob.spokePhases[i0])))
+  const r1 = Math.max(20, blob.spokes[i1] * (1 + 0.22 * Math.sin(t * blob.spokeSpeed + blob.spokePhases[i1])))
   const effectiveRadius = r0 + frac * (r1 - r0)
 
   const norm = dist / effectiveRadius
@@ -109,7 +109,7 @@ export default function DitherGreenOrganic() {
       raf.current = requestAnimationFrame(frame)
       const dt = now - (last.current || now - 16); last.current = now
       const delta = Math.min(dt / 16.667, 4)
-      t.current += 0.016 * delta
+      t.current = (t.current + 0.016 * delta) % (Math.PI * 200)
       const W = window.innerWidth, H = window.innerHeight
 
       for (const b of blobsR.current) {
