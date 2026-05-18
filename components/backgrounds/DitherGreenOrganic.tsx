@@ -69,6 +69,7 @@ export default function DitherGreenOrganic() {
   const raf = useRef(0)
   const last = useRef(0)
   const t = useRef(0)
+  const cursorMap = useRef<Map<string, number>>(new Map())
 
   useEffect(() => {
     const canvas = canvasRef.current!
@@ -136,10 +137,16 @@ export default function DitherGreenOrganic() {
           }
           inf = Math.min(1, inf)
 
-          // Cursor — elongated horizontally
+          // Cursor — lerped per cell, fast build slow decay
           const cdx = (cx - mx) / 2.8
           const cdy = cy - my
-          inf = Math.min(1, inf + Math.max(0, 1 - Math.sqrt(cdx * cdx + cdy * cdy) / 160) ** 2 * 0.7)
+          const cursorTarget = Math.max(0, 1 - Math.sqrt(cdx * cdx + cdy * cdy) / 160) ** 2 * 0.7
+          const key = `${col},${row}`
+          const prev = cursorMap.current.get(key) ?? 0
+          const lerpSpeed = cursorTarget > prev ? 0.10 * delta : 0.006 * delta
+          const smoothCursor = prev + (cursorTarget - prev) * lerpSpeed
+          cursorMap.current.set(key, smoothCursor)
+          inf = Math.min(1, inf + smoothCursor)
 
           for (const r of ripplesR.current) {
             const rd = Math.sqrt((cx - r.x) ** 2 + (cy - r.y) ** 2)
