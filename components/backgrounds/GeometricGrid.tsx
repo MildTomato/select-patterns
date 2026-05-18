@@ -201,10 +201,15 @@ export default function GeometricGrid() {
 
         const finalSize = idleSize + cursorBoost
 
-        // Alpha: small shapes are dim (gray), large shapes are bright white
-        // Normalise finalSize against MAX_SIZE+CURSOR_BOOST ceiling
-        const sizeNorm = Math.min(1, (finalSize - MIN_SIZE) / (MAX_SIZE + CURSOR_BOOST - MIN_SIZE))
-        const alpha = 0.12 + sizeNorm * 0.88 // 0.12 at smallest → 1.0 at largest
+        // Hard threshold — anything below this is a flat dim 1px node, no variation
+        const INACTIVE_THRESHOLD = 0.05
+        if (clamped < INACTIVE_THRESHOLD && cursorBoost === 0) {
+          drawShape(cell.x, cell.y, cell.type, 1, 0.12)
+          continue
+        }
+
+        // Alpha: driven purely by blob influence (0→1), not size, so only blob area brightens
+        const alpha = 0.12 + Math.min(1, clamped / 1) * 0.88
 
         drawShape(cell.x, cell.y, cell.type, finalSize, alpha)
       }
