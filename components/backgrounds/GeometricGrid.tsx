@@ -42,8 +42,8 @@ function shadeForInfluence(clamped: number, cursorBoost: number): string {
   return SHADES[0]
 }
 
-// Additional 4-point star shape type
-type ExtendedShapeType = ShapeType | 4
+// Additional filled square shape type
+type ExtendedShapeType = ShapeType | 4 // 4=filled square
 
 export default function GeometricGrid() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -147,18 +147,10 @@ export default function GeometricGrid() {
         ctx.rect(Math.round(x - arm), Math.round(y - thick), Math.round(arm * 2), Math.round(thick * 2))
         ctx.fill()
       } else {
-        // 4-point star
-        const outer = s * 0.95
-        const inner = s * 0.35
+        // Filled square
+        const half = Math.max(0.5, s * 0.55)
         ctx.beginPath()
-        for (let i = 0; i < 8; i++) {
-          const angle = (i * Math.PI) / 4 - Math.PI / 2
-          const r = i % 2 === 0 ? outer : inner
-          const px = x + Math.cos(angle) * r
-          const py = y + Math.sin(angle) * r
-          i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)
-        }
-        ctx.closePath()
+        ctx.rect(Math.round(x - half), Math.round(y - half), Math.round(half * 2), Math.round(half * 2))
         ctx.fill()
       }
     }
