@@ -12,6 +12,7 @@ const PAGES = [
   { href: "/dither-green",        label: "DITHER — GREEN" },
   { href: "/dither-green-light",       label: "DITHER — GREEN LIGHT" },
   { href: "/dither-green-light-rows",  label: "DITHER — GREEN LIGHT ROWS" },
+  { href: "/dither-green-organic",     label: "DITHER — GREEN ORGANIC" },
   { href: "/dither-rows",        label: "DITHER — ROWS" },
   { href: "/dither-rows-color",       label: "DITHER — ROWS COLOR" },
   { href: "/dither-rows-color-light", label: "DITHER — ROWS COLOR LIGHT" },
