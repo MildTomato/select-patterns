@@ -134,19 +134,24 @@ export default function GeometricGrid() {
     const MAX_SIZE = 9
     const CURSOR_RADIUS = 130
     const CURSOR_BOOST = 8
+    const TARGET_FPS = 12
+    const FRAME_INTERVAL = 1000 / TARGET_FPS
 
     const animate = (now: number) => {
-      const dt = Math.min(50, now - (lastTimeRef.current || now))
-      lastTimeRef.current = now
-      const delta = dt / 16.667
+      animRef.current = requestAnimationFrame(animate)
+
+      const elapsed = now - (lastTimeRef.current || 0)
+      if (elapsed < FRAME_INTERVAL) return
+      // Snap to the nearest frame boundary to avoid drift
+      lastTimeRef.current = now - (elapsed % FRAME_INTERVAL)
 
       const W = window.innerWidth
       const H = window.innerHeight
 
       for (const blob of blobsRef.current) {
-        blob.x += blob.vx * delta
-        blob.y += blob.vy * delta
-        blob.angle += blob.angleSpeed * delta
+        blob.x += blob.vx
+        blob.y += blob.vy
+        blob.angle += blob.angleSpeed
         if (blob.x < 0 || blob.x > W) blob.vx *= -1
         if (blob.y < 0 || blob.y > H) blob.vy *= -1
       }
@@ -192,7 +197,7 @@ export default function GeometricGrid() {
       // Ripples — drawn as white strokes, fading out purely by line thinning
       ripplesRef.current = ripplesRef.current.filter((r) => r.life < 1)
       for (const ripple of ripplesRef.current) {
-        ripple.life += 0.025 * delta
+        ripple.life += 0.025
         const radius = ripple.r + ripple.life * 200
         const opacity = 1 - ripple.life
         const ov = Math.round(opacity * 255).toString(16).padStart(2, "0")
