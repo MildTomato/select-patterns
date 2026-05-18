@@ -5,12 +5,16 @@ import { usePathname } from "next/navigation"
 import { useState } from "react"
 
 const PAGES = [
-  { href: "/",              label: "GEOMETRIC GRID" },
-  { href: "/pills",         label: "PILL GRID" },
-  { href: "/dither",        label: "GLYPH DITHER" },
-  { href: "/supabase",      label: "SUPABASE GREEN" },
-  { href: "/landing",       label: "LANDING DARK" },
-  { href: "/landing-light", label: "LANDING LIGHT" },
+  { href: "/",               label: "GEOMETRIC GRID" },
+  { href: "/pills",          label: "PILL GRID" },
+  { href: "/dither",         label: "DITHER — WORDS" },
+  { href: "/dither-symbols", label: "DITHER — SYMBOLS" },
+  { href: "/dither-green",   label: "DITHER — GREEN" },
+  { href: "/dither-rows",    label: "DITHER — ROWS" },
+  { href: "/dither-heavy",   label: "DITHER — HEAVY" },
+  { href: "/supabase",       label: "SUPABASE GREEN" },
+  { href: "/landing",        label: "LANDING DARK" },
+  { href: "/landing-light",  label: "LANDING LIGHT" },
 ]
 
 export default function Nav() {
