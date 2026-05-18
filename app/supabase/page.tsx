@@ -6,7 +6,7 @@ const GeometricGridGreen = dynamic(() => import("@/components/backgrounds/Geomet
 
 export default function SupabasePage() {
   return (
-    <main className="relative w-screen h-screen overflow-hidden bg-[#0a1a10]">
+    <main className="relative w-screen h-screen overflow-hidden bg-[#0a1a10] pt-[41px]">
       <div className="absolute inset-0">
         <GeometricGridGreen />
       </div>

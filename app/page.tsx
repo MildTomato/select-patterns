@@ -6,7 +6,7 @@ const GeometricGrid = dynamic(() => import("@/components/backgrounds/GeometricGr
 
 export default function Page() {
   return (
-    <main className="relative w-screen h-screen overflow-hidden bg-[#080808]">
+    <main className="relative w-screen h-screen overflow-hidden bg-[#080808] pt-[41px]">
       <div className="absolute inset-0">
         <GeometricGrid />
       </div>
