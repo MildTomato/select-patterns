@@ -96,9 +96,13 @@ export default function GeometricGrid() {
 
     const drawShape = (x: number, y: number, type: ShapeType, size: number, alpha: number) => {
       const s = Math.max(1, size)
-      ctx.globalAlpha = alpha
-      ctx.fillStyle = "#ffffff"
-      ctx.strokeStyle = "#ffffff"
+      ctx.globalAlpha = 1
+      // Encode brightness as a gray color — avoids compositing artifacts from globalAlpha
+      const v = Math.round(alpha * 255)
+      const hex = v.toString(16).padStart(2, "0")
+      const color = `#${hex}${hex}${hex}`
+      ctx.fillStyle = color
+      ctx.strokeStyle = color
 
       if (type === 0) {
         // Filled dot — at size 1 this is a single pixel
@@ -208,8 +212,9 @@ export default function GeometricGrid() {
       // Click ripples
       ripplesRef.current = ripplesRef.current.filter((r) => r.alpha > 0.02)
       for (const ripple of ripplesRef.current) {
-        ctx.globalAlpha = ripple.alpha
-        ctx.strokeStyle = "#ffffff"
+        const rv = Math.round(ripple.alpha * 255)
+        const rhex = rv.toString(16).padStart(2, "0")
+        ctx.strokeStyle = `#${rhex}${rhex}${rhex}`
         ctx.lineWidth = 1
         ctx.beginPath()
         ctx.arc(ripple.x, ripple.y, ripple.r, 0, Math.PI * 2)
@@ -218,7 +223,6 @@ export default function GeometricGrid() {
         ripple.alpha *= 0.90
       }
 
-      ctx.globalAlpha = 1
       animRef.current = requestAnimationFrame(animate)
     }
 
