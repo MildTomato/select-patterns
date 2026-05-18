@@ -164,7 +164,7 @@ export default function PillGrid() {
     const CURSOR_RADIUS = 150
     const CURSOR_BOOST = 0.5
     const RIPPLE_BOOST = 0.6
-    const TARGET_FPS = 12
+    const TARGET_FPS = 24
     const FRAME_INTERVAL = 1000 / TARGET_FPS
 
     const animate = (now: number) => {

@@ -103,7 +103,7 @@ export default function MiniGrid() {
     }
 
     const MAX_SIZE = 7, CURSOR_RADIUS = 80, CURSOR_BOOST = 6, RIPPLE_BOOST = 5
-    const FRAME_INTERVAL = 1000 / 12
+    const FRAME_INTERVAL = 1000 / 24
 
     const animate = (now: number) => {
       animRef.current = requestAnimationFrame(animate)

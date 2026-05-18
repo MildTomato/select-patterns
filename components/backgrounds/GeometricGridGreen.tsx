@@ -168,7 +168,7 @@ export default function GeometricGridGreen() {
     const CURSOR_RADIUS = 130
     const CURSOR_BOOST = 8
     const RIPPLE_BOOST = 7
-    const TARGET_FPS = 12
+    const TARGET_FPS = 24
     const FRAME_INTERVAL = 1000 / TARGET_FPS
 
     const animate = (now: number) => {
