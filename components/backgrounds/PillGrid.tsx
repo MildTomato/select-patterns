@@ -57,6 +57,7 @@ export default function PillGrid() {
   const animRef = useRef<number>(0)
   const ripplesRef = useRef<Ripple[]>([])
   const blobsRef = useRef<Blob[]>([])
+  const lastTimeRef = useRef<number>(0)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -166,15 +167,17 @@ export default function PillGrid() {
 
     const animate = (now: number) => {
       animRef.current = requestAnimationFrame(animate)
+      const delta = Math.min((now - (lastTimeRef.current || now)) / 16.667, 4)
+      lastTimeRef.current = now
 
 
       const W = window.innerWidth
       const H = window.innerHeight
 
       for (const blob of blobsRef.current) {
-        blob.x += blob.vx
-        blob.y += blob.vy
-        blob.angle += blob.angleSpeed
+        blob.x += blob.vx * delta
+        blob.y += blob.vy * delta
+        blob.angle += blob.angleSpeed * delta
         if (blob.x < 0 || blob.x > W) blob.vx *= -1
         if (blob.y < 0 || blob.y > H) blob.vy *= -1
       }
@@ -229,8 +232,8 @@ export default function PillGrid() {
 
       ripplesRef.current = ripplesRef.current.filter((r) => r.life < 1)
       for (const ripple of ripplesRef.current) {
-        ripple.radius += ripple.speed
-        ripple.life += 0.055
+        ripple.radius += ripple.speed * delta
+        ripple.life += 0.055 * delta
       }
     }
 
@@ -255,6 +258,8 @@ export default function PillGrid() {
 
     resize()
     animRef.current = requestAnimationFrame(animate)
+      const delta = Math.min((now - (lastTimeRef.current || now)) / 16.667, 4)
+      lastTimeRef.current = now
 
     window.addEventListener("resize", resize)
     canvas.addEventListener("mousemove", onMouseMove)
