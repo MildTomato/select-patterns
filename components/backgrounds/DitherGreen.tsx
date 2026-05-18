@@ -9,9 +9,15 @@ const BAYER = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]]
 const WORDS = ["CONF","TALK","OPEN","CODE","SHIP","LIVE","DEMO","BUILD","NEXT","DATA"]
 function wordAt(col:number,row:number){ const h=((col*2654435761)^(row*2246822519))>>>0; return WORDS[h%WORDS.length] }
 
-// Supabase greens for the active tiles
-const TILE_COLORS = ["#3ECF8E","#1a4731","#276749","#0d9e6a","#2dd4bf"]
-function colorAt(col:number,row:number){ const h=((col*1234567891)^(row*987654321))>>>0; return TILE_COLORS[h%TILE_COLORS.length] }
+// Color is driven by influence level — not random per cell
+const TILE_COLORS = ["#0d9e6a","#1a4731","#276749","#3ECF8E","#a8f0d4"]
+function tileColor(inf: number): string {
+  if (inf > 0.75) return TILE_COLORS[4]
+  if (inf > 0.55) return TILE_COLORS[3]
+  if (inf > 0.40) return TILE_COLORS[2]
+  if (inf > 0.28) return TILE_COLORS[1]
+  return TILE_COLORS[0]
+}
 
 export default function DitherGreen() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -81,9 +87,10 @@ export default function DitherGreen() {
           const inside=inf>0.32+(bayer-0.5)*0.30
 
           if(inside){
-            ctx.fillStyle=colorAt(col,row)
+            ctx.fillStyle=tileColor(inf)
             ctx.fillRect(cx-STEP/2,cy-STEP/2,STEP,STEP)
-            ctx.fillStyle="#ffffff"
+            // Text color inverts based on brightness
+            ctx.fillStyle = inf > 0.6 ? "#0a1a10" : "#ffffff"
             ctx.font="bold 8px monospace"
             ctx.textAlign="center"; ctx.textBaseline="middle"
             ctx.fillText(wordAt(col,row),cx,cy)
