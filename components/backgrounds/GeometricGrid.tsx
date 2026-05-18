@@ -2,12 +2,12 @@
 
 import { useEffect, useRef } from "react"
 
-type ShapeType = 0 | 1 | 2 | 3 // 0=filled dot, 1=open circle, 2=filled triangle, 3=plus
+type ShapeType = 0 | 1 | 2 | 3 // 0=filled dot, 1=open circle, 2=diamond, 3=plus
 
 interface Cell {
   x: number
   y: number
-  type: ShapeType
+  type: ExtendedShapeType
 }
 
 interface Ripple {
@@ -42,6 +42,9 @@ function shadeForInfluence(clamped: number, cursorBoost: number): string {
   return SHADES[0]
 }
 
+// Additional 4-point star shape type
+type ExtendedShapeType = ShapeType | 4
+
 export default function GeometricGrid() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mouseRef = useRef({ x: -9999, y: -9999 })
@@ -61,9 +64,9 @@ export default function GeometricGrid() {
 
     const SPACING = 20
 
-    const shapeForCell = (col: number, row: number): ShapeType => {
+    const shapeForCell = (col: number, row: number): ExtendedShapeType => {
       const h = ((col * 2654435761) ^ (row * 2246822519)) >>> 0
-      return (h % 4) as ShapeType
+      return (h % 5) as ExtendedShapeType
     }
 
     const initCells = () => {
@@ -85,10 +88,10 @@ export default function GeometricGrid() {
       const W = window.innerWidth
       const H = window.innerHeight
       blobsRef.current = [
-        { x: W * 0.35, y: H * 0.40, vx:  1.1, vy:  0.7, angle: 0,   angleSpeed:  0.014, radiusX: W * 0.52, radiusY: H * 0.58 },
-        { x: W * 0.65, y: H * 0.60, vx: -0.8, vy:  1.0, angle: 1.2, angleSpeed: -0.010, radiusX: W * 0.48, radiusY: H * 0.54 },
-        { x: W * 0.50, y: H * 0.25, vx:  0.6, vy: -1.2, angle: 2.5, angleSpeed:  0.018, radiusX: W * 0.42, radiusY: H * 0.46 },
-        { x: W * 0.20, y: H * 0.70, vx: -1.0, vy: -0.6, angle: 0.8, angleSpeed: -0.013, radiusX: W * 0.50, radiusY: H * 0.52 },
+        { x: W * 0.35, y: H * 0.40, vx:  2.2, vy:  1.4, angle: 0,   angleSpeed:  0.022, radiusX: W * 0.52, radiusY: H * 0.58 },
+        { x: W * 0.65, y: H * 0.60, vx: -1.6, vy:  2.0, angle: 1.2, angleSpeed: -0.018, radiusX: W * 0.48, radiusY: H * 0.54 },
+        { x: W * 0.50, y: H * 0.25, vx:  1.2, vy: -2.4, angle: 2.5, angleSpeed:  0.026, radiusX: W * 0.42, radiusY: H * 0.46 },
+        { x: W * 0.20, y: H * 0.70, vx: -2.0, vy: -1.2, angle: 0.8, angleSpeed: -0.020, radiusX: W * 0.50, radiusY: H * 0.52 },
       ]
     }
 
@@ -106,31 +109,35 @@ export default function GeometricGrid() {
       initBlobs()
     }
 
-    const drawShape = (x: number, y: number, type: ShapeType, size: number, color: string) => {
+    const drawShape = (x: number, y: number, type: ExtendedShapeType, size: number, color: string) => {
       const s = Math.max(1, size)
       ctx.globalAlpha = 1
       ctx.fillStyle = color
       ctx.strokeStyle = color
 
       if (type === 0) {
+        // Filled dot
         ctx.beginPath()
         ctx.arc(x, y, Math.max(0.5, s * 0.38), 0, Math.PI * 2)
         ctx.fill()
       } else if (type === 1) {
+        // Open circle ring
         ctx.lineWidth = Math.max(0.5, s * 0.18)
         ctx.beginPath()
         ctx.arc(x, y, Math.max(1, s * 0.8), 0, Math.PI * 2)
         ctx.stroke()
       } else if (type === 2) {
-        const h = s * 1.4
-        const hw = s * 0.8
+        // Diamond (rotated square)
+        const r = s * 0.9
         ctx.beginPath()
-        ctx.moveTo(x, y - h * 0.6)
-        ctx.lineTo(x + hw, y + h * 0.4)
-        ctx.lineTo(x - hw, y + h * 0.4)
+        ctx.moveTo(x,     y - r)
+        ctx.lineTo(x + r, y)
+        ctx.lineTo(x,     y + r)
+        ctx.lineTo(x - r, y)
         ctx.closePath()
         ctx.fill()
-      } else {
+      } else if (type === 3) {
+        // Plus / cross
         const arm = Math.max(1, s * 0.9)
         const thick = Math.max(0.5, s * 0.2)
         ctx.beginPath()
@@ -138,6 +145,20 @@ export default function GeometricGrid() {
         ctx.fill()
         ctx.beginPath()
         ctx.rect(Math.round(x - arm), Math.round(y - thick), Math.round(arm * 2), Math.round(thick * 2))
+        ctx.fill()
+      } else {
+        // 4-point star
+        const outer = s * 0.95
+        const inner = s * 0.35
+        ctx.beginPath()
+        for (let i = 0; i < 8; i++) {
+          const angle = (i * Math.PI) / 4 - Math.PI / 2
+          const r = i % 2 === 0 ? outer : inner
+          const px = x + Math.cos(angle) * r
+          const py = y + Math.sin(angle) * r
+          i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)
+        }
+        ctx.closePath()
         ctx.fill()
       }
     }
@@ -228,7 +249,7 @@ export default function GeometricGrid() {
       ripplesRef.current = ripplesRef.current.filter((r) => r.life < 1)
       for (const ripple of ripplesRef.current) {
         ripple.radius += ripple.speed
-        ripple.life += 0.03
+        ripple.life += 0.055
       }
     }
 
@@ -244,9 +265,9 @@ export default function GeometricGrid() {
         ripplesRef.current.push({
           x: e.clientX,
           y: e.clientY,
-          radius: i * 30,
-          speed: 18,
-          width: 28,
+          radius: i * 20,
+          speed: 14,
+          width: 12,
           life: 0,
         })
       }
