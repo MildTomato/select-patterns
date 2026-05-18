@@ -160,7 +160,12 @@ export default function GlyphDither() {
 
         // Smooth the influence for gradual transitions
         const target = Math.min(1, rawInfluence + cursorInfluence * 0.8 + rippleInfluence)
-        cell.smoothInfluence += (target - cell.smoothInfluence) * 0.06 * delta
+        // Fast init on first frame — if never set, snap straight there
+        if (cell.smoothInfluence === 0 && target > 0) {
+          cell.smoothInfluence = target
+        } else {
+          cell.smoothInfluence += (target - cell.smoothInfluence) * 0.12 * delta
+        }
 
         // Bayer dither threshold — adds noise to the boundary
         const col = Math.floor(cell.x / SPACING) % 4
@@ -172,12 +177,12 @@ export default function GlyphDither() {
         const inside = cell.smoothInfluence + ditherNoise > THRESHOLD
 
         if (inside) {
-          // INSIDE: black cell background, white glyph text
-          const pad = 11
+          // INSIDE: black tile, white glyph — tile fills the full cell
+          const half = SPACING / 2
           ctx.fillStyle = "#0f0f0f"
-          ctx.fillRect(cell.x - pad, cell.y - pad, SPACING - 1, SPACING - 1)
+          ctx.fillRect(cell.x - half, cell.y - half, SPACING, SPACING)
           ctx.fillStyle = "#ffffff"
-          ctx.font = "bold 8px monospace"
+          ctx.font = "bold 9px monospace"
           ctx.textAlign = "center"
           ctx.textBaseline = "middle"
           ctx.fillText(cell.glyph, cell.x, cell.y)
