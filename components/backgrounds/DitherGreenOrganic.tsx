@@ -70,6 +70,8 @@ export default function DitherGreenOrganic() {
   const last = useRef(0)
   const t = useRef(0)
   const cursorMap = useRef<Map<string, number>>(new Map())
+  // Tracks how many frames the cursor has been in range of each cell (delay gate)
+  const cursorDwell = useRef<Map<string, number>>(new Map())
 
   useEffect(() => {
     const canvas = canvasRef.current!
@@ -137,16 +139,30 @@ export default function DitherGreenOrganic() {
           }
           inf = Math.min(1, inf)
 
-          // Cursor — lerped per cell, fast build slow decay
+          // Cursor — dwell delay before influence starts, then fast build / slow decay
           const cdx = (cx - mx) / 2.8
           const cdy = cy - my
           const cursorTarget = Math.max(0, 1 - Math.sqrt(cdx * cdx + cdy * cdy) / 160) ** 2 * 0.7
           const key = `${col},${row}`
           const prev = cursorMap.current.get(key) ?? 0
-          const lerpSpeed = cursorTarget > prev ? 0.10 * delta : 0.006 * delta
-          const smoothCursor = prev + (cursorTarget - prev) * lerpSpeed
-          cursorMap.current.set(key, smoothCursor)
-          inf = Math.min(1, inf + smoothCursor)
+          const dwell = cursorDwell.current.get(key) ?? 0
+
+          if (cursorTarget > 0) {
+            // Accumulate dwell time while cursor is in range
+            const newDwell = Math.min(dwell + delta, 40)
+            cursorDwell.current.set(key, newDwell)
+            // Only start building after ~40 frames of dwell
+            if (newDwell >= 40) {
+              const smoothCursor = prev + (cursorTarget - prev) * 0.10 * delta
+              cursorMap.current.set(key, smoothCursor)
+            }
+          } else {
+            // Cursor left — reset dwell, decay influence slowly
+            cursorDwell.current.set(key, 0)
+            const smoothCursor = prev + (0 - prev) * 0.006 * delta
+            cursorMap.current.set(key, smoothCursor)
+          }
+          inf = Math.min(1, inf + (cursorMap.current.get(key) ?? 0))
 
           for (const r of ripplesR.current) {
             const rd = Math.sqrt((cx - r.x) ** 2 + (cy - r.y) ** 2)
