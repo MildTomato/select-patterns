@@ -43,12 +43,12 @@ function blobInfluence(blob: Blob, px: number, py: number, t: number): number {
   const dist = Math.sqrt(dx * dx + dy * dy)
   if (dist === 0) return 1
 
-  // Angle of this point relative to blob centre
-  const angle = Math.atan2(dy, dx) - blob.angle
+  // Normalise angle to [0, 2π]
+  const normAngle = ((Math.atan2(dy, dx) - blob.angle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2)
 
   // Interpolate between the 8 spokes to get effective radius at this angle
   const N = blob.spokes.length
-  const rawIdx = ((angle / (Math.PI * 2)) * N + N) % N
+  const rawIdx = (normAngle / (Math.PI * 2)) * N
   const i0 = Math.floor(rawIdx) % N
   const i1 = (i0 + 1) % N
   const frac = rawIdx - Math.floor(rawIdx)
