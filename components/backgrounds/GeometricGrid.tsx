@@ -83,10 +83,10 @@ export default function GeometricGrid() {
       const W = window.innerWidth
       const H = window.innerHeight
       blobsRef.current = [
-        { x: W * 0.35, y: H * 0.40, vx:  0.22, vy:  0.14, angle: 0,   angleSpeed:  0.003, radiusX: W * 0.52, radiusY: H * 0.58 },
-        { x: W * 0.65, y: H * 0.60, vx: -0.16, vy:  0.20, angle: 1.2, angleSpeed: -0.002, radiusX: W * 0.48, radiusY: H * 0.54 },
-        { x: W * 0.50, y: H * 0.25, vx:  0.12, vy: -0.18, angle: 2.5, angleSpeed:  0.004, radiusX: W * 0.42, radiusY: H * 0.46 },
-        { x: W * 0.20, y: H * 0.70, vx: -0.20, vy: -0.12, angle: 0.8, angleSpeed: -0.003, radiusX: W * 0.50, radiusY: H * 0.52 },
+        { x: W * 0.35, y: H * 0.40, vx:  1.1, vy:  0.7, angle: 0,   angleSpeed:  0.014, radiusX: W * 0.52, radiusY: H * 0.58 },
+        { x: W * 0.65, y: H * 0.60, vx: -0.8, vy:  1.0, angle: 1.2, angleSpeed: -0.010, radiusX: W * 0.48, radiusY: H * 0.54 },
+        { x: W * 0.50, y: H * 0.25, vx:  0.6, vy: -1.2, angle: 2.5, angleSpeed:  0.018, radiusX: W * 0.42, radiusY: H * 0.46 },
+        { x: W * 0.20, y: H * 0.70, vx: -1.0, vy: -0.6, angle: 0.8, angleSpeed: -0.013, radiusX: W * 0.50, radiusY: H * 0.52 },
       ]
     }
 
