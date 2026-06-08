@@ -187,9 +187,9 @@ export const THEME_AMBER: QTheme = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-interface Props { theme: QTheme }
+interface Props { theme: QTheme; mode?: "light" | "dark" | "auto" }
 
-export default function QuadTree({ theme }: Props) {
+export default function QuadTree({ theme, mode = "auto" }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const raf = useRef(0)
   const last = useRef(0)
@@ -215,7 +215,9 @@ export default function QuadTree({ theme }: Props) {
       tRef.current = (tRef.current + 0.0004 * delta) % (Math.PI * 2)
 
       const W = window.innerWidth, H = window.innerHeight
-      const isDark = document.documentElement.classList.contains("dark")
+      const isDark = mode === "auto"
+        ? document.documentElement.classList.contains("dark")
+        : mode === "dark"
       const t = tRef.current
 
       // Orbit the noise offset in a circle so it never drifts into dead zones
@@ -245,7 +247,7 @@ export default function QuadTree({ theme }: Props) {
     raf.current = requestAnimationFrame(frame)
     window.addEventListener("resize", resize)
     return () => { cancelAnimationFrame(raf.current); window.removeEventListener("resize", resize) }
-  }, [theme])
+  }, [theme, mode])
 
   return <canvas ref={canvasRef} className="absolute inset-0" />
 }
