@@ -20,7 +20,7 @@ function tileColor(inf: number): string {
 }
 
 // Dot colors for inactive cells — tinted green based on proximity, fading to near-invisible
-const DOT_COLORS = ["#d8d4ce","#b8d4c8","#8ec8b0","#5db896","#3ECF8E"]
+const DOT_COLORS = ["#b8b4ae","#b8d4c8","#8ec8b0","#5db896","#3ECF8E"]
 function dotColor(inf: number): string {
   if (inf > 0.25) return DOT_COLORS[4]
   if (inf > 0.16) return DOT_COLORS[3]
@@ -98,8 +98,7 @@ export default function DitherGreenLight() {
           if(inside){
             ctx.fillStyle=tileColor(inf)
             ctx.fillRect(cx-STEP/2,cy-STEP/2,STEP,STEP)
-            // Light tiles always get dark text
-            ctx.fillStyle = "#0a1a10"
+            ctx.fillStyle = "#1a4731"
             ctx.font="bold 8px monospace"
             ctx.textAlign="center"; ctx.textBaseline="middle"
             ctx.fillText(wordAt(col,row),cx,cy)
