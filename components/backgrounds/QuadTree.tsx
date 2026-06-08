@@ -120,19 +120,15 @@ export const THEME_MONO: QTheme = {
 }
 
 export const THEME_GREEN: QTheme = {
-  bg: "#f2efe9", bgDark: "#060e0a",
-  line: "#1a4731", lineDark: "#276749",
+  bg: "#f5f0eb", bgDark: "#060e0a",
+  line: "#1a4731", lineDark: "#3ECF8E",
   lineWidth: 0.7,
   dot: "#1a4731", dotDark: "#3ECF8E",
-  cellFill: (depth, maxDepth, isDark) => {
-    const t = depth / maxDepth
-    if (isDark) {
-      const v = Math.round(t * 24).toString(16).padStart(2, "0")
-      return `#0${v}1${v}0${v}`.slice(0, 7)
-    } else {
-      const light = ["#f2efe9","#eaf5f0","#daf0e8","#c8e8dd","#aeddd0","#8ecfc0"]
-      return light[Math.min(depth, light.length - 1)]
-    }
+  cellFill: (depth, _maxDepth, isDark) => {
+    const light = ["#f5f0eb","#edf7f0","#d4f0e4","#a8f0d4","#3ECF8E","#276749","#1a4731"]
+    const dark  = ["#060e0a","#0d1f17","#1a4731","#276749","#3ECF8E","#a8f0d4","#d4f0e4"]
+    const arr = isDark ? dark : light
+    return arr[Math.min(depth, arr.length - 1)]
   },
 }
 
