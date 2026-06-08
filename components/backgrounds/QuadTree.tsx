@@ -40,8 +40,10 @@ function fbm(x: number, y: number, octaves = 4): number {
 
 interface QNode { x: number; y: number; w: number; h: number; depth: number; isLeaf: boolean; children?: QNode[] }
 
-const MIN_SIZE = 6   // never subdivide below this pixel size
+const MIN_SIZE = 6
 const MAX_DEPTH = 9
+// Minimum depth before noise threshold applies — guarantees grid is never blank
+const MIN_FORCED_DEPTH = 2
 
 function buildQuadTree(
   x: number, y: number, w: number, h: number,
@@ -51,10 +53,10 @@ function buildQuadTree(
   const cx = x + w / 2, cy = y + h / 2
   const n = noiseField(cx, cy)
 
-  // Subdivide if noise is above threshold AND we haven't hit min size
-  // Higher noise = more subdivision. Threshold increases with depth so deep cells need stronger signal.
+  // Always split below MIN_FORCED_DEPTH regardless of noise — prevents blank screen
+  const forceSplit = depth < MIN_FORCED_DEPTH
   const threshold = 0.38 + depth * 0.045
-  const shouldSplit = n > threshold && depth < MAX_DEPTH && w > MIN_SIZE * 2 && h > MIN_SIZE * 2
+  const shouldSplit = (forceSplit || n > threshold) && depth < MAX_DEPTH && w > MIN_SIZE * 2 && h > MIN_SIZE * 2
 
   if (!shouldSplit) {
     return { x, y, w, h, depth, isLeaf: true }
@@ -203,16 +205,18 @@ export default function QuadTree({ theme }: Props) {
       const dt = now - (last.current || now - 16)
       last.current = now
       const delta = Math.min(dt / 16.667, 4)
-      tRef.current = (tRef.current + 0.003 * delta) % 1000
+      tRef.current = (tRef.current + 0.004 * delta) % (Math.PI * 2)
 
       const W = window.innerWidth, H = window.innerHeight
       const isDark = document.documentElement.classList.contains("dark")
       const t = tRef.current
 
-      // Noise field that slowly shifts over time — gives organic movement to subdivision
+      // Orbit the noise offset in a circle so it never drifts into dead zones
       const scale = 2.8 / Math.min(W, H)
+      const ox = Math.cos(t) * 3.2
+      const oy = Math.sin(t * 0.7) * 3.2
       const noiseField = (cx: number, cy: number) =>
-        fbm(cx * scale + t * 0.12, cy * scale + t * 0.08)
+        fbm(cx * scale + ox, cy * scale + oy)
 
       const root = buildQuadTree(0, 0, W, H, 0, noiseField)
 
