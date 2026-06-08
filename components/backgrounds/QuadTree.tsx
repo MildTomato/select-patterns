@@ -88,10 +88,17 @@ function drawNode(
       if (fill) { ctx.fillStyle = fill; ctx.fillRect(node.x, node.y, node.w, node.h) }
     }
 
-    // Cell border
+    // Cell border — draw only right + bottom edges to avoid double-drawing shared borders
     ctx.strokeStyle = isDark ? theme.lineDark : theme.line
     ctx.lineWidth = theme.lineWidth
-    ctx.strokeRect(node.x + 0.5, node.y + 0.5, node.w - 1, node.h - 1)
+    ctx.beginPath()
+    // right edge
+    ctx.moveTo(node.x + node.w, node.y)
+    ctx.lineTo(node.x + node.w, node.y + node.h)
+    // bottom edge
+    ctx.moveTo(node.x, node.y + node.h)
+    ctx.lineTo(node.x + node.w, node.y + node.h)
+    ctx.stroke()
 
     // One dot at center of each leaf cell
     const dotR = Math.max(1, Math.min(3.5, node.w * 0.07))
@@ -224,6 +231,14 @@ export default function QuadTree({ theme }: Props) {
       ctx.fillRect(0, 0, W, H)
 
       drawNode(ctx, root, theme, isDark, MAX_DEPTH)
+
+      // Draw top + left edges of the whole canvas once to close the perimeter
+      ctx.strokeStyle = isDark ? theme.lineDark : theme.line
+      ctx.lineWidth = theme.lineWidth
+      ctx.beginPath()
+      ctx.moveTo(0, 0); ctx.lineTo(W, 0)  // top
+      ctx.moveTo(0, 0); ctx.lineTo(0, H)  // left
+      ctx.stroke()
     }
 
     resize()
