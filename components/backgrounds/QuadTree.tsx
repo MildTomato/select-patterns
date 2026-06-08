@@ -113,53 +113,66 @@ export interface QTheme {
 }
 
 export const THEME_MONO: QTheme = {
-  bg: "#f2efe9", bgDark: "#111111",
-  line: "#2a2520", lineDark: "#333333",
+  bg: "#f2efe9", bgDark: "#0e0e0e",
+  line: "#2a2520", lineDark: "#444444",
   lineWidth: 0.7,
-  dot: "#2a2520", dotDark: "#999999",
+  dot: "#2a2520", dotDark: "#888888",
+  cellFill: (depth, _maxDepth, isDark) => {
+    if (isDark) {
+      const dark = ["#0e0e0e","#141414","#1a1a1a","#202020","#262626","#2c2c2c","#323232"]
+      return dark[Math.min(depth, dark.length - 1)]
+    } else {
+      const light = ["#f2efe9","#eceae3","#e5e2da","#dedad0","#d6d2c7","#cec9be","#c6c0b5"]
+      return light[Math.min(depth, light.length - 1)]
+    }
+  },
 }
 
 export const THEME_GREEN: QTheme = {
   bg: "#f5f0eb", bgDark: "#060e0a",
-  line: "#1a4731", lineDark: "#1a4731",
-  lineWidth: 0.8,
+  line: "#1a4731", lineDark: "#3ECF8E",
+  lineWidth: 0.7,
   dot: "#1a4731", dotDark: "#3ECF8E",
   cellFill: (depth, _maxDepth, isDark) => {
     if (isDark) {
-      // Very subtle depth tinting — stays dark, barely visible
-      const dark = ["#060e0a","#071009","#081208","#091408","#0a1608","#0b1808"]
+      const dark = ["#060e0a","#0a1a10","#0f2618","#153320","#1a4028","#204d30","#265a38"]
       return dark[Math.min(depth, dark.length - 1)]
     } else {
-      // All fills stay very close to the background — lines do the work
-      const light = ["#f5f0eb","#f2ede7","#efeae3","#ece7df","#e9e4db","#e6e1d7"]
+      const light = ["#f5f0eb","#edf7f0","#ddf2e6","#c8eadb","#b0e0cc","#94d4bb","#76c6a8"]
       return light[Math.min(depth, light.length - 1)]
     }
   },
 }
 
 export const THEME_BLUE: QTheme = {
-  bg: "#f0f3f9", bgDark: "#08090f",
-  line: "#1e3a5f", lineDark: "#2a4a7f",
+  bg: "#f0f4fa", bgDark: "#06080f",
+  line: "#1e3a5f", lineDark: "#60a5fa",
   lineWidth: 0.7,
   dot: "#1e3a5f", dotDark: "#60a5fa",
-  cellFill: (depth, maxDepth, isDark) => {
-    const light = ["#f0f3f9","#e8eef7","#dce6f5","#ccdaf0","#b8ccea","#a0bbe2"]
-    const dark  = ["#08090f","#0c1020","#101628","#141c30","#182438","#1c2c40"]
-    const arr = isDark ? dark : light
-    return arr[Math.min(depth, arr.length - 1)]
+  cellFill: (depth, _maxDepth, isDark) => {
+    if (isDark) {
+      const dark = ["#06080f","#0a0e1a","#0e1426","#121a32","#16203e","#1a264a","#1e2c56"]
+      return dark[Math.min(depth, dark.length - 1)]
+    } else {
+      const light = ["#f0f4fa","#e4ecf7","#d4e1f5","#bfd4f0","#a6c4ea","#88b2e2","#669ed8"]
+      return light[Math.min(depth, light.length - 1)]
+    }
   },
 }
 
 export const THEME_AMBER: QTheme = {
   bg: "#faf6ee", bgDark: "#100a00",
-  line: "#78350f", lineDark: "#b45309",
+  line: "#78350f", lineDark: "#fbbf24",
   lineWidth: 0.7,
   dot: "#78350f", dotDark: "#fbbf24",
-  cellFill: (depth, maxDepth, isDark) => {
-    const light = ["#faf6ee","#f7efe0","#f2e4c8","#ead8ae","#e0c990","#d4b870"]
-    const dark  = ["#100a00","#1a1000","#221600","#2c1c00","#362200","#402800"]
-    const arr = isDark ? dark : light
-    return arr[Math.min(depth, arr.length - 1)]
+  cellFill: (depth, _maxDepth, isDark) => {
+    if (isDark) {
+      const dark = ["#100a00","#1c1000","#281600","#341c00","#402200","#4c2800","#582e00"]
+      return dark[Math.min(depth, dark.length - 1)]
+    } else {
+      const light = ["#faf6ee","#f5edd8","#efe0be","#e8d0a0","#dfbe80","#d4aa5c","#c89438"]
+      return light[Math.min(depth, light.length - 1)]
+    }
   },
 }
 
