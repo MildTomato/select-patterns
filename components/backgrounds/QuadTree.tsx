@@ -205,7 +205,7 @@ export default function QuadTree({ theme }: Props) {
       const dt = now - (last.current || now - 16)
       last.current = now
       const delta = Math.min(dt / 16.667, 4)
-      tRef.current = (tRef.current + 0.004 * delta) % (Math.PI * 2)
+      tRef.current = (tRef.current + 0.0004 * delta) % (Math.PI * 2)
 
       const W = window.innerWidth, H = window.innerHeight
       const isDark = document.documentElement.classList.contains("dark")
