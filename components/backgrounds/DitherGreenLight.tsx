@@ -10,17 +10,18 @@ const WORDS = ["CONF","TALK","OPEN","CODE","SHIP","LIVE","DEMO","BUILD","NEXT","
 function wordAt(col:number,row:number){ const h=((col*2654435761)^(row*2246822519))>>>0; return WORDS[h%WORDS.length] }
 
 // Inverted — lighter greens on the outside, darker at the blob centre
-const TILE_COLORS = ["#0d9e6a","#1a4731","#276749","#3ECF8E","#a8f0d4"]
+// Palette matched to THEME_GREEN in QuadTree.tsx
+const TILE_COLORS = ["#8ecfc0","#aeddd0","#c8e8dd","#daf0e8","#eaf5f0"]
 function tileColor(inf: number): string {
-  if (inf > 0.75) return TILE_COLORS[1]
-  if (inf > 0.55) return TILE_COLORS[2]
-  if (inf > 0.40) return TILE_COLORS[3]
-  if (inf > 0.28) return TILE_COLORS[4]
+  if (inf > 0.75) return TILE_COLORS[0]
+  if (inf > 0.55) return TILE_COLORS[1]
+  if (inf > 0.40) return TILE_COLORS[2]
+  if (inf > 0.28) return TILE_COLORS[3]
   return TILE_COLORS[4]
 }
 
-// Dot colors for inactive cells — tinted green based on proximity, fading to near-invisible
-const DOT_COLORS = ["#d8d4ce","#b8d4c8","#8ec8b0","#5db896","#3ECF8E"]
+// Dot colors — tinted to match QuadTree green, fading to bg
+const DOT_COLORS = ["#dde8e4","#c8e8dd","#aeddd0","#8ecfc0","#1a4731"]
 function dotColor(inf: number): string {
   if (inf > 0.25) return DOT_COLORS[4]
   if (inf > 0.16) return DOT_COLORS[3]
@@ -69,7 +70,7 @@ export default function DitherGreenLight() {
       ripplesR.current=ripplesR.current.filter(r=>r.life<1)
       for(const r of ripplesR.current){r.radius+=10*delta;r.life+=0.04*delta}
 
-      ctx.fillStyle="#f5f0eb"; ctx.fillRect(0,0,W,H)
+      ctx.fillStyle="#f2efe9"; ctx.fillRect(0,0,W,H)
 
       const mx=mouse.current.x,my=mouse.current.y
       const COLS=Math.ceil(W/STEP)+1,ROWS=Math.ceil(H/STEP)+1
@@ -98,8 +99,7 @@ export default function DitherGreenLight() {
           if(inside){
             ctx.fillStyle=tileColor(inf)
             ctx.fillRect(cx-STEP/2,cy-STEP/2,STEP,STEP)
-            // Light tiles always get dark text
-            ctx.fillStyle = "#0a1a10"
+            ctx.fillStyle = "#1a4731"
             ctx.font="bold 8px monospace"
             ctx.textAlign="center"; ctx.textBaseline="middle"
             ctx.fillText(wordAt(col,row),cx,cy)
