@@ -121,14 +121,19 @@ export const THEME_MONO: QTheme = {
 
 export const THEME_GREEN: QTheme = {
   bg: "#f5f0eb", bgDark: "#060e0a",
-  line: "#1a4731", lineDark: "#3ECF8E",
-  lineWidth: 0.7,
+  line: "#1a4731", lineDark: "#1a4731",
+  lineWidth: 0.8,
   dot: "#1a4731", dotDark: "#3ECF8E",
   cellFill: (depth, _maxDepth, isDark) => {
-    const light = ["#f5f0eb","#edf7f0","#d4f0e4","#a8f0d4","#3ECF8E","#276749","#1a4731"]
-    const dark  = ["#060e0a","#0d1f17","#1a4731","#276749","#3ECF8E","#a8f0d4","#d4f0e4"]
-    const arr = isDark ? dark : light
-    return arr[Math.min(depth, arr.length - 1)]
+    if (isDark) {
+      // Very subtle depth tinting — stays dark, barely visible
+      const dark = ["#060e0a","#071009","#081208","#091408","#0a1608","#0b1808"]
+      return dark[Math.min(depth, dark.length - 1)]
+    } else {
+      // All fills stay very close to the background — lines do the work
+      const light = ["#f5f0eb","#f2ede7","#efeae3","#ece7df","#e9e4db","#e6e1d7"]
+      return light[Math.min(depth, light.length - 1)]
+    }
   },
 }
 
