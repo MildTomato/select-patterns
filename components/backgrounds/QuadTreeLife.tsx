@@ -45,8 +45,8 @@ function buildLifeTree(
 ): QNode {
   const act = activity(x, y, x + w, y + h)
   const forceSplit = depth < MIN_FORCED_DEPTH
-  // More activity (live cells in this region) => more likely to split
-  const threshold = 0.10 + depth * 0.06
+  // More accumulated heat (recently active life) => more likely to split
+  const threshold = 0.06 + depth * 0.05
   const shouldSplit = (forceSplit || act > threshold) && depth < MAX_DEPTH && w > MIN_SIZE * 2 && h > MIN_SIZE * 2
 
   if (!shouldSplit) return { x, y, w, h, depth, isLeaf: true }
@@ -73,6 +73,9 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
 
   // Life grid state
   const gridRef = useRef<Uint8Array | null>(null)
+  // Smoothed heat field — accumulates where life is active, decays slowly.
+  // Drives subdivision so the tree evolves gradually instead of snapping each step.
+  const heatRef = useRef<Float32Array | null>(null)
   const cols = useRef(0)
   const rows = useRef(0)
   const cellPx = useRef(22)
@@ -86,6 +89,7 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
       const g = new Uint8Array(C * R)
       for (let i = 0; i < C * R; i++) g[i] = Math.random() < 0.22 ? 1 : 0
       gridRef.current = g
+      heatRef.current = new Float32Array(C * R)
     }
 
     const resize = () => {
@@ -128,6 +132,12 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
         }
       }
       gridRef.current = next
+
+      // Bump heat wherever a cell is currently alive
+      const heat = heatRef.current!
+      for (let i = 0; i < next.length; i++) {
+        if (next[i]) heat[i] = Math.min(1, heat[i] + 0.5)
+      }
     }
 
     const frame = (now: number) => {
@@ -145,22 +155,27 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
         : mode === "dark"
 
       const g = gridRef.current!
+      const heat = heatRef.current!
       const C = cols.current, R = rows.current
       const cp = cellPx.current
 
-      // Activity = fraction of live cells inside a rectangle
+      // Decay heat smoothly every frame (frame-rate independent)
+      const decay = Math.pow(0.992, dt / 16.667)
+      for (let i = 0; i < heat.length; i++) heat[i] *= decay
+
+      // Activity = average heat inside a rectangle (smoothed, slow-moving)
       const activity = (x0: number, y0: number, x1: number, y1: number) => {
         const gx0 = Math.max(0, Math.floor(x0 / cp))
         const gy0 = Math.max(0, Math.floor(y0 / cp))
         const gx1 = Math.min(C - 1, Math.ceil(x1 / cp))
         const gy1 = Math.min(R - 1, Math.ceil(y1 / cp))
-        let live = 0, total = 0
+        let sum = 0, total = 0
         for (let y = gy0; y <= gy1; y++) {
           for (let x = gx0; x <= gx1; x++) {
-            live += g[y * C + x]; total++
+            sum += heat[y * C + x]; total++
           }
         }
-        return total === 0 ? 0 : live / total
+        return total === 0 ? 0 : sum / total
       }
 
       const root = buildLifeTree(0, 0, W, H, 0, activity)
@@ -213,13 +228,15 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
     // Click injects a glider-ish burst of life
     const onClick = (e: MouseEvent) => {
       const g = gridRef.current
-      if (!g) return
+      const heat = heatRef.current
+      if (!g || !heat) return
       const C = cols.current, R = rows.current, cp = cellPx.current
       const gx = Math.floor(e.clientX / cp), gy = Math.floor(e.clientY / cp)
       for (let dy = -2; dy <= 2; dy++) {
         for (let dx = -2; dx <= 2; dx++) {
           const nx = (gx + dx + C) % C, ny = (gy + dy + R) % R
           if (Math.random() < 0.6) g[ny * C + nx] = 1
+          heat[ny * C + nx] = 1
         }
       }
     }
