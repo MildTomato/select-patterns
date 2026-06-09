@@ -20,6 +20,7 @@ const PAGES = [
   { href: "/dither-heavy",   label: "DITHER — HEAVY" },
   { href: "/quadtree-mono",  label: "QUADTREE — MONO" },
   { href: "/quadtree-green", label: "QUADTREE — GREEN" },
+  { href: "/quadtree-green-light", label: "QUADTREE — GREEN LIGHT" },
   { href: "/quadtree-blue",  label: "QUADTREE — BLUE" },
   { href: "/quadtree-amber", label: "QUADTREE — AMBER" },
   { href: "/supabase",       label: "SUPABASE GREEN" },
