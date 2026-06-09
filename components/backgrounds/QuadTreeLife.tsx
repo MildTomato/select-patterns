@@ -2,15 +2,16 @@
 
 import { useEffect, useRef, useState } from "react"
 
-// ─── Conway's Game of Life grid ───────────────────────────────────────────────
-// The live-cell density field drives quadtree subdivision: busy regions split deep,
-// dead/empty regions stay as large cells.
+// ─── Quadtree driven by Conway's Game of Life ─────────────────────────────────
+// Each leaf cell represents one conference attendee. Busy regions subdivide deep,
+// calm regions stay large. Capped at LEAF_BUDGET cells.
 
 interface QNode { x: number; y: number; w: number; h: number; depth: number; isLeaf: boolean; children?: QNode[] }
 
-const MIN_SIZE = 7
-const MAX_DEPTH = 8
+const MIN_SIZE = 26       // larger min so cells never get too small to be useful
+const MAX_DEPTH = 7
 const MIN_FORCED_DEPTH = 2
+const LEAF_BUDGET = 800   // max people on screen
 
 export interface LifeTheme {
   bg: string; bgDark: string
@@ -18,6 +19,7 @@ export interface LifeTheme {
   lineWidth: number
   dot: string; dotDark: string
   dotAlive: string; dotAliveDark: string
+  highlight: string; highlightDark: string
   cellFill: (density: number, isDark: boolean) => string
 }
 
@@ -27,8 +29,8 @@ export const LIFE_MONO: LifeTheme = {
   lineWidth: 0.7,
   dot: "#bdb8ae", dotDark: "#3a3a3a",
   dotAlive: "#2a2520", dotAliveDark: "#e8e8e8",
+  highlight: "#2a2520", highlightDark: "#e8e8e8",
   cellFill: (density, isDark) => {
-    // density 0..1 — busier areas are tinted darker (light) / lighter (dark)
     const steps = isDark
       ? ["#0e0e0e","#161616","#1e1e1e","#262626","#2e2e2e","#363636"]
       : ["#f2efe9","#e9e6df","#dfdbd2","#d4cfc4","#c8c2b6","#bbb4a6"]
@@ -37,30 +39,75 @@ export const LIFE_MONO: LifeTheme = {
   },
 }
 
-// Build a quadtree where subdivision depth depends on local life activity
+// ─── Fake attendee data ───────────────────────────────────────────────────────
+const FIRST = ["Alex","Sam","Jordan","Taylor","Morgan","Casey","Riley","Jamie","Avery","Quinn","Drew","Reese","Skyler","Cameron","Harper","Rowan","Emerson","Finley","Hayden","Dakota","Parker","Sawyer","Charlie","Elliot","Kai","Noor","Mei","Diego","Priya","Yuki","Omar","Lena","Tariq","Sofia","Hugo","Nadia","Ravi","Ingrid","Mateo","Aisha"]
+const LAST = ["Chen","Patel","Garcia","Müller","Kim","Okafor","Rossi","Nguyen","Silva","Haddad","Andersson","Yamamoto","Costa","Ivanov","Dubois","Schmidt","Ali","Khan","Tanaka","Lopez","Novak","Reyes","Berg","Fischer","Moreau","Santos","Walsh","Petrov","Adeyemi","Ortega"]
+const ROLES = ["Software Engineer","Product Designer","Founder","CTO","Data Scientist","DevRel","VP Engineering","ML Researcher","Frontend Dev","Backend Dev","Solutions Architect","Engineering Manager","Developer Advocate","Security Engineer","Platform Engineer"]
+const COMPANIES = ["Vercel","Acme Inc","Northwind","Globex","Initech","Hooli","Umbrella","Stark Labs","Wayne Tech","Cyberdyne","Soylent","Massive Dynamic","Pied Piper","Aperture","Black Mesa"]
+
+interface Person { name: string; role: string; company: string; id: string }
+
+function makePeople(): Person[] {
+  // Deterministic 800 attendees
+  let s = 1337
+  const rand = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff }
+  const people: Person[] = []
+  for (let i = 0; i < LEAF_BUDGET; i++) {
+    const f = FIRST[(rand() * FIRST.length) | 0]
+    const l = LAST[(rand() * LAST.length) | 0]
+    people.push({
+      name: `${f} ${l}`,
+      role: ROLES[(rand() * ROLES.length) | 0],
+      company: COMPANIES[(rand() * COMPANIES.length) | 0],
+      id: `#${(1000 + i)}`,
+    })
+  }
+  return people
+}
+
+// Map a screen location to a stable attendee index
+function personIndexAt(cx: number, cy: number): number {
+  const gx = Math.floor(cx / 40), gy = Math.floor(cy / 40)
+  let h = (gx * 73856093) ^ (gy * 19349663)
+  h = h < 0 ? -h : h
+  return h % LEAF_BUDGET
+}
+
 function buildLifeTree(
   x: number, y: number, w: number, h: number,
   depth: number,
-  activity: (x0: number, y0: number, x1: number, y1: number) => number
+  activity: (x0: number, y0: number, x1: number, y1: number) => number,
+  budget: { count: number }
 ): QNode {
   const act = activity(x, y, x + w, y + h)
   const forceSplit = depth < MIN_FORCED_DEPTH
-  // More accumulated heat (recently active life) => more likely to split
   const threshold = 0.06 + depth * 0.05
-  const shouldSplit = (forceSplit || act > threshold) && depth < MAX_DEPTH && w > MIN_SIZE * 2 && h > MIN_SIZE * 2
+  const canSize = w > MIN_SIZE * 2 && h > MIN_SIZE * 2
+  const withinBudget = budget.count + 4 <= LEAF_BUDGET
+  const shouldSplit = (forceSplit || act > threshold) && depth < MAX_DEPTH && canSize && withinBudget
 
-  if (!shouldSplit) return { x, y, w, h, depth, isLeaf: true }
+  if (!shouldSplit) { budget.count++; return { x, y, w, h, depth, isLeaf: true } }
 
   const hw = w / 2, hh = h / 2
   return {
     x, y, w, h, depth, isLeaf: false,
     children: [
-      buildLifeTree(x,      y,      hw, hh, depth + 1, activity),
-      buildLifeTree(x + hw, y,      hw, hh, depth + 1, activity),
-      buildLifeTree(x,      y + hh, hw, hh, depth + 1, activity),
-      buildLifeTree(x + hw, y + hh, hw, hh, depth + 1, activity),
+      buildLifeTree(x,      y,      hw, hh, depth + 1, activity, budget),
+      buildLifeTree(x + hw, y,      hw, hh, depth + 1, activity, budget),
+      buildLifeTree(x,      y + hh, hw, hh, depth + 1, activity, budget),
+      buildLifeTree(x + hw, y + hh, hw, hh, depth + 1, activity, budget),
     ]
   }
+}
+
+function leafAt(node: QNode, px: number, py: number): QNode | null {
+  if (px < node.x || px >= node.x + node.w || py < node.y || py >= node.y + node.h) return null
+  if (node.isLeaf) return node
+  for (const c of node.children!) {
+    const hit = leafAt(c, px, py)
+    if (hit) return hit
+  }
+  return null
 }
 
 interface Props { theme?: LifeTheme; mode?: "light" | "dark" | "auto" }
@@ -71,25 +118,30 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
   const last = useRef(0)
   const stepAccum = useRef(0)
 
-  // Control state (UI) mirrored into refs so the animation loop reads live values
   const [running, setRunning] = useState(true)
-  const [speed, setSpeed] = useState(3) // generations per second
+  const [speed, setSpeed] = useState(3)
+  const [leafCount, setLeafCount] = useState(0)
   const runningRef = useRef(true)
   const stepIntervalRef = useRef(1000 / 3)
-  const resetSignal = useRef(0)
 
   useEffect(() => { runningRef.current = running }, [running])
   useEffect(() => { stepIntervalRef.current = 1000 / speed }, [speed])
 
-  // Life grid state
+  // Hover popover state
+  const [hover, setHover] = useState<{ x: number; y: number; person: Person } | null>(null)
+
+  const peopleRef = useRef<Person[]>([])
+  if (peopleRef.current.length === 0) peopleRef.current = makePeople()
+
   const gridRef = useRef<Uint8Array | null>(null)
-  // Smoothed heat field — accumulates where life is active, decays slowly.
-  // Drives subdivision so the tree evolves gradually instead of snapping each step.
   const heatRef = useRef<Float32Array | null>(null)
   const cols = useRef(0)
   const rows = useRef(0)
   const cellPx = useRef(22)
   const seedRef = useRef<(() => void) | null>(null)
+  const rootRef = useRef<QNode | null>(null)
+  const hoverCellRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null)
+  const leafCountRef = useRef(0)
 
   useEffect(() => {
     const canvas = canvasRef.current!
@@ -134,18 +186,20 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
           next[y * C + x] = (alive && (n === 2 || n === 3)) || (!alive && n === 3) ? 1 : 0
         }
       }
-      // Inject occasional random life so it never stagnates
+      // Continuous low-level injection so the simulation never settles into
+      // static "ash" and freezes — this is why it used to "end".
+      const sprinkle = Math.max(6, Math.floor(C * R * 0.0015))
+      for (let k = 0; k < sprinkle; k++) {
+        next[(Math.random() * next.length) | 0] = 1
+      }
+      // Stronger reseed if population collapses
       let liveCount = 0
       for (let i = 0; i < next.length; i++) liveCount += next[i]
-      if (liveCount < C * R * 0.04) {
-        for (let k = 0; k < 30; k++) {
-          const i = (Math.random() * next.length) | 0
-          next[i] = 1
-        }
+      if (liveCount < C * R * 0.05) {
+        for (let k = 0; k < 40; k++) next[(Math.random() * next.length) | 0] = 1
       }
       gridRef.current = next
 
-      // Bump heat wherever a cell is currently alive
       const heat = heatRef.current!
       for (let i = 0; i < next.length; i++) {
         if (next[i]) heat[i] = Math.min(1, heat[i] + 0.5)
@@ -158,7 +212,6 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
       last.current = now
       stepAccum.current += dt
 
-      // Step the simulation at the user-controlled rate, only while running
       if (runningRef.current && stepAccum.current > stepIntervalRef.current) {
         step(); stepAccum.current = 0
       }
@@ -173,11 +226,9 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
       const C = cols.current, R = rows.current
       const cp = cellPx.current
 
-      // Decay heat smoothly every frame (frame-rate independent)
       const decay = Math.pow(0.992, dt / 16.667)
       for (let i = 0; i < heat.length; i++) heat[i] *= decay
 
-      // Activity = average heat inside a rectangle (smoothed, slow-moving)
       const activity = (x0: number, y0: number, x1: number, y1: number) => {
         const gx0 = Math.max(0, Math.floor(x0 / cp))
         const gy0 = Math.max(0, Math.floor(y0 / cp))
@@ -192,12 +243,13 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
         return total === 0 ? 0 : sum / total
       }
 
-      const root = buildLifeTree(0, 0, W, H, 0, activity)
+      const budget = { count: 0 }
+      const root = buildLifeTree(0, 0, W, H, 0, activity, budget)
+      rootRef.current = root
 
       ctx.fillStyle = isDark ? theme.bgDark : theme.bg
       ctx.fillRect(0, 0, W, H)
 
-      // Draw leaves
       const drawNode = (node: QNode) => {
         if (node.isLeaf) {
           const dens = activity(node.x, node.y, node.x + node.w, node.y + node.h)
@@ -211,11 +263,10 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
           ctx.moveTo(node.x, node.y + node.h); ctx.lineTo(node.x + node.w, node.y + node.h)
           ctx.stroke()
 
-          // Dot — alive if the cell at this center is alive
           const gx = Math.min(C - 1, Math.floor((node.x + node.w / 2) / cp))
           const gy = Math.min(R - 1, Math.floor((node.y + node.h / 2) / cp))
           const isAlive = g[gy * C + gx] === 1
-          const dotR = Math.max(1, Math.min(3.5, node.w * 0.07))
+          const dotR = Math.max(1.5, Math.min(3.5, node.w * 0.06))
           ctx.fillStyle = isAlive
             ? (isDark ? theme.dotAliveDark : theme.dotAlive)
             : (isDark ? theme.dotDark : theme.dot)
@@ -228,18 +279,32 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
       }
       drawNode(root)
 
+      // Outer perimeter
       ctx.strokeStyle = isDark ? theme.lineDark : theme.line
       ctx.lineWidth = theme.lineWidth
       ctx.beginPath()
       ctx.moveTo(0, 0); ctx.lineTo(W, 0)
       ctx.moveTo(0, 0); ctx.lineTo(0, H)
       ctx.stroke()
+
+      // Highlight the hovered cell
+      const hc = hoverCellRef.current
+      if (hc) {
+        ctx.strokeStyle = isDark ? theme.highlightDark : theme.highlight
+        ctx.lineWidth = 1.5
+        ctx.strokeRect(hc.x + 1, hc.y + 1, hc.w - 2, hc.h - 2)
+      }
+
+      if (budget.count !== leafCountRef.current) {
+        leafCountRef.current = budget.count
+        setLeafCount(budget.count)
+      }
     }
 
     resize()
     raf.current = requestAnimationFrame(frame)
     window.addEventListener("resize", resize)
-    // Click injects a glider-ish burst of life
+
     const onClick = (e: MouseEvent) => {
       const g = gridRef.current
       const heat = heatRef.current
@@ -254,11 +319,27 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
         }
       }
     }
+
+    const onMove = (e: MouseEvent) => {
+      const root = rootRef.current
+      if (!root) return
+      const leaf = leafAt(root, e.clientX, e.clientY)
+      if (!leaf) { hoverCellRef.current = null; setHover(null); return }
+      hoverCellRef.current = { x: leaf.x, y: leaf.y, w: leaf.w, h: leaf.h }
+      const idx = personIndexAt(leaf.x + leaf.w / 2, leaf.y + leaf.h / 2)
+      setHover({ x: e.clientX, y: e.clientY, person: peopleRef.current[idx] })
+    }
+    const onLeave = () => { hoverCellRef.current = null; setHover(null) }
+
     canvas.addEventListener("click", onClick)
+    canvas.addEventListener("mousemove", onMove)
+    canvas.addEventListener("mouseleave", onLeave)
     return () => {
       cancelAnimationFrame(raf.current)
       window.removeEventListener("resize", resize)
       canvas.removeEventListener("click", onClick)
+      canvas.removeEventListener("mousemove", onMove)
+      canvas.removeEventListener("mouseleave", onLeave)
     }
   }, [theme, mode])
 
@@ -268,7 +349,30 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
     <>
       <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" />
 
+      {/* Hover popover */}
+      {hover && (
+        <div
+          className="pointer-events-none absolute z-50 w-56 rounded-lg border border-border bg-background/95 backdrop-blur-sm px-4 py-3 font-mono shadow-lg"
+          style={{
+            left: Math.min(hover.x + 16, window.innerWidth - 240),
+            top: Math.min(hover.y + 16, window.innerHeight - 110),
+          }}
+        >
+          <div className="text-sm font-semibold text-foreground">{hover.person.name}</div>
+          <div className="mt-0.5 text-xs text-muted-foreground">{hover.person.role}</div>
+          <div className="mt-2 flex items-center justify-between text-[11px] uppercase tracking-wider text-muted-foreground">
+            <span>{hover.person.company}</span>
+            <span>{hover.person.id}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Controls */}
       <div className="absolute top-6 right-6 z-50 flex flex-col gap-3 bg-background/80 backdrop-blur-sm border border-border rounded-lg px-4 py-3 font-mono text-xs">
+        <div className="flex items-center justify-between gap-4">
+          <span className="uppercase tracking-wider text-muted-foreground">Attendees</span>
+          <span className="font-semibold text-foreground">{leafCount} / {LEAF_BUDGET}</span>
+        </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setRunning(r => !r)}
