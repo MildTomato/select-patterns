@@ -48,6 +48,8 @@ const CONTROLS: Ctl[] = [
   { key: "thresholdBase",  label: "Split base",   min: 0,    max: 0.3,  step: 0.01, def: 0.06 },
   { key: "thresholdSlope", label: "Split slope",  min: 0,    max: 0.15, step: 0.005,def: 0.05 },
   { key: "density",        label: "Seed density", min: 0.05, max: 0.5,  step: 0.01, def: 0.22, reinit: true },
+  { key: "reveal",         label: "Reveal at",    min: 0,    max: 0.4,  step: 0.01, def: 0.04 },
+  { key: "fadeRange",      label: "Fade range",   min: 0.01, max: 0.4,  step: 0.01, def: 0.12 },
 ]
 
 type Cfg = Record<string, number>
@@ -258,6 +260,20 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
       const drawNode = (node: QNode) => {
         if (node.isLeaf) {
           const dens = activity(node.x, node.y, node.x + node.w, node.y + node.h)
+
+          const gx = Math.min(C - 1, Math.floor((node.x + node.w / 2) / cp))
+          const gy = Math.min(R - 1, Math.floor((node.y + node.h / 2) / cp))
+          const isAlive = g[gy * C + gx] === 1
+
+          // Reveal: cells fade in with local activity. Below `reveal` they are fully
+          // hidden (blank background); above reveal+fadeRange they are fully drawn.
+          // Live cells are always shown so the simulation never visibly clips.
+          let reveal = (dens - cfg.reveal) / cfg.fadeRange
+          reveal = reveal < 0 ? 0 : reveal > 1 ? 1 : reveal
+          if (isAlive) reveal = 1
+          if (reveal <= 0.001) return  // nothing here — leave background blank
+
+          ctx.globalAlpha = reveal
           ctx.fillStyle = theme.cellFill(dens, isDark)
           ctx.fillRect(node.x, node.y, node.w, node.h)
 
@@ -268,14 +284,9 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
           ctx.moveTo(node.x, node.y + node.h); ctx.lineTo(node.x + node.w, node.y + node.h)
           ctx.stroke()
 
-          const gx = Math.min(C - 1, Math.floor((node.x + node.w / 2) / cp))
-          const gy = Math.min(R - 1, Math.floor((node.y + node.h / 2) / cp))
-          const isAlive = g[gy * C + gx] === 1
-          // Big calm cells are essentially empty — don't plant a lone dot in the void.
-          // Only draw a dot when the cell is alive, or small/active enough to warrant one.
-          const drawDot = isAlive || node.w < 48 || dens > 0.12
+          // Only draw a dot when the cell is alive or small/active enough to warrant one.
+          const drawDot = isAlive || (node.w < 48 && dens > 0.12)
           if (drawDot) {
-            // Fixed small radius (not scaled by cell size) so large cells never get fat dots.
             const dotR = isAlive ? 2.6 : 1.4
             ctx.fillStyle = isAlive
               ? (isDark ? theme.dotAliveDark : theme.dotAlive)
@@ -284,18 +295,12 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
             ctx.arc(node.x + node.w / 2, node.y + node.h / 2, dotR, 0, Math.PI * 2)
             ctx.fill()
           }
+          ctx.globalAlpha = 1
         } else {
           for (const c of node.children!) drawNode(c)
         }
       }
       drawNode(root)
-
-      ctx.strokeStyle = isDark ? theme.lineDark : theme.line
-      ctx.lineWidth = theme.lineWidth
-      ctx.beginPath()
-      ctx.moveTo(0, 0); ctx.lineTo(W, 0)
-      ctx.moveTo(0, 0); ctx.lineTo(0, H)
-      ctx.stroke()
     }
 
     resize()
