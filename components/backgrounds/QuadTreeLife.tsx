@@ -110,9 +110,23 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
   const last = useRef(0)
   const stepAccum = useRef(0)
 
-  const initial = useRef(readInitial())
-  const [cfg, setCfg] = useState<Cfg>(initial.current.cfg)
-  const [running, setRunning] = useState(initial.current.running)
+  // Start from defaults so SSR and the first client render match (no hydration
+  // mismatch). URL params are applied in an effect after mount.
+  const [cfg, setCfg] = useState<Cfg>(() => {
+    const d: Cfg = {}
+    for (const c of CONTROLS) d[c.key] = c.def
+    return d
+  })
+  const [running, setRunning] = useState(true)
+  const hydrated = useRef(false)
+
+  // Apply URL query params once on mount (client only)
+  useEffect(() => {
+    const { cfg: urlCfg, running: urlRunning } = readInitial()
+    setCfg(urlCfg)
+    setRunning(urlRunning)
+    hydrated.current = true
+  }, [])
 
   // Mirror config into a ref read by the animation loop
   const cfgRef = useRef<Cfg>(cfg)
@@ -121,9 +135,9 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
   useEffect(() => { cfgRef.current = cfg }, [cfg])
   useEffect(() => { runningRef.current = running }, [running])
 
-  // Sync everything to the URL query string
+  // Sync everything to the URL query string (only after initial hydration)
   useEffect(() => {
-    if (typeof window === "undefined") return
+    if (typeof window === "undefined" || !hydrated.current) return
     const sp = new URLSearchParams()
     for (const c of CONTROLS) sp.set(c.key, String(cfg[c.key]))
     sp.set("running", running ? "1" : "0")
