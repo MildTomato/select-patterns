@@ -145,9 +145,13 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
       }
       gridRef.current = next
 
-      // Bump heat wherever a cell is currently alive
+      // Heat dynamics run on the SAME clock as the simulation (per generation),
+      // so the growth/decay animation looks identical at every speed — changing
+      // speed just plays the same evolution slower or faster.
       const heat = heatRef.current!
       for (let i = 0; i < next.length; i++) {
+        // Decay once per generation, then bump where life is currently active
+        heat[i] *= 0.82
         if (next[i]) heat[i] = Math.min(1, heat[i] + 0.5)
       }
     }
@@ -173,11 +177,8 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
       const C = cols.current, R = rows.current
       const cp = cellPx.current
 
-      // Decay heat smoothly every frame (frame-rate independent)
-      const decay = Math.pow(0.992, dt / 16.667)
-      for (let i = 0; i < heat.length; i++) heat[i] *= decay
-
-      // Activity = average heat inside a rectangle (smoothed, slow-moving)
+      // Activity = average heat inside a rectangle (smoothed, slow-moving).
+      // Heat decay happens in step() so it stays in sync with the sim at any speed.
       const activity = (x0: number, y0: number, x1: number, y1: number) => {
         const gx0 = Math.max(0, Math.floor(x0 / cp))
         const gy0 = Math.max(0, Math.floor(y0 / cp))
