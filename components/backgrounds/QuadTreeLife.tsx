@@ -2,15 +2,12 @@
 
 import { useEffect, useRef, useState } from "react"
 
-// ─── Conway's Game of Life grid ───────────────────────────────────────────────
-// The live-cell density field drives quadtree subdivision: busy regions split deep,
-// dead/empty regions stay as large cells.
+// ─── Quadtree driven by Conway's Game of Life ─────────────────────────────────
+// A live-cell "heat" field drives subdivision. A *displayed* heat field lerps
+// toward the target each frame (Smoothing control) so the structure morphs
+// gradually instead of snapping every generation.
 
 interface QNode { x: number; y: number; w: number; h: number; depth: number; isLeaf: boolean; children?: QNode[] }
-
-const MIN_SIZE = 7
-const MAX_DEPTH = 8
-const MIN_FORCED_DEPTH = 2
 
 export interface LifeTheme {
   bg: string; bgDark: string
@@ -28,7 +25,6 @@ export const LIFE_MONO: LifeTheme = {
   dot: "#bdb8ae", dotDark: "#3a3a3a",
   dotAlive: "#2a2520", dotAliveDark: "#e8e8e8",
   cellFill: (density, isDark) => {
-    // density 0..1 — busier areas are tinted darker (light) / lighter (dark)
     const steps = isDark
       ? ["#0e0e0e","#161616","#1e1e1e","#262626","#2e2e2e","#363636"]
       : ["#f2efe9","#e9e6df","#dfdbd2","#d4cfc4","#c8c2b6","#bbb4a6"]
@@ -37,17 +33,58 @@ export const LIFE_MONO: LifeTheme = {
   },
 }
 
-// Build a quadtree where subdivision depth depends on local life activity
+// ─── Control definitions (everything is a control) ────────────────────────────
+interface Ctl { key: string; label: string; min: number; max: number; step: number; def: number; unit?: string; reinit?: boolean }
+
+const CONTROLS: Ctl[] = [
+  { key: "speed",          label: "Speed",        min: 1,    max: 30,   step: 1,    def: 3,    unit: "/s" },
+  { key: "smoothing",      label: "Smoothing",    min: 0,    max: 0.95, step: 0.05, def: 0.6 },
+  { key: "decay",          label: "Heat decay",   min: 0.5,  max: 0.98, step: 0.01, def: 0.82 },
+  { key: "bump",           label: "Heat add",     min: 0.1,  max: 1,    step: 0.05, def: 0.5 },
+  { key: "resolution",     label: "Resolution",   min: 8,    max: 44,   step: 2,    def: 22,   unit: "px", reinit: true },
+  { key: "minSize",        label: "Min cell",     min: 4,    max: 48,   step: 1,    def: 7,    unit: "px" },
+  { key: "maxDepth",       label: "Max depth",    min: 3,    max: 10,   step: 1,    def: 8 },
+  { key: "forcedDepth",    label: "Min depth",    min: 0,    max: 4,    step: 1,    def: 2 },
+  { key: "thresholdBase",  label: "Split base",   min: 0,    max: 0.3,  step: 0.01, def: 0.06 },
+  { key: "thresholdSlope", label: "Split slope",  min: 0,    max: 0.15, step: 0.005,def: 0.05 },
+  { key: "density",        label: "Seed density", min: 0.05, max: 0.5,  step: 0.01, def: 0.22, reinit: true },
+]
+
+type Cfg = Record<string, number>
+
+function clamp(v: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, v)) }
+
+function readInitial(): { cfg: Cfg; running: boolean } {
+  const cfg: Cfg = {}
+  for (const c of CONTROLS) cfg[c.key] = c.def
+  let running = true
+  if (typeof window !== "undefined") {
+    const sp = new URLSearchParams(window.location.search)
+    for (const c of CONTROLS) {
+      const raw = sp.get(c.key)
+      if (raw !== null) {
+        const n = parseFloat(raw)
+        if (!Number.isNaN(n)) cfg[c.key] = clamp(n, c.min, c.max)
+      }
+    }
+    const r = sp.get("running")
+    if (r !== null) running = r !== "0" && r !== "false"
+  }
+  return { cfg, running }
+}
+
 function buildLifeTree(
-  x: number, y: number, w: number, h: number,
-  depth: number,
-  activity: (x0: number, y0: number, x1: number, y1: number) => number
+  x: number, y: number, w: number, h: number, depth: number,
+  activity: (x0: number, y0: number, x1: number, y1: number) => number,
+  cfg: Cfg
 ): QNode {
   const act = activity(x, y, x + w, y + h)
-  const forceSplit = depth < MIN_FORCED_DEPTH
-  // More accumulated heat (recently active life) => more likely to split
-  const threshold = 0.06 + depth * 0.05
-  const shouldSplit = (forceSplit || act > threshold) && depth < MAX_DEPTH && w > MIN_SIZE * 2 && h > MIN_SIZE * 2
+  const forceSplit = depth < cfg.forcedDepth
+  const threshold = cfg.thresholdBase + depth * cfg.thresholdSlope
+  const shouldSplit =
+    (forceSplit || act > threshold) &&
+    depth < cfg.maxDepth &&
+    w > cfg.minSize * 2 && h > cfg.minSize * 2
 
   if (!shouldSplit) return { x, y, w, h, depth, isLeaf: true }
 
@@ -55,10 +92,10 @@ function buildLifeTree(
   return {
     x, y, w, h, depth, isLeaf: false,
     children: [
-      buildLifeTree(x,      y,      hw, hh, depth + 1, activity),
-      buildLifeTree(x + hw, y,      hw, hh, depth + 1, activity),
-      buildLifeTree(x,      y + hh, hw, hh, depth + 1, activity),
-      buildLifeTree(x + hw, y + hh, hw, hh, depth + 1, activity),
+      buildLifeTree(x,      y,      hw, hh, depth + 1, activity, cfg),
+      buildLifeTree(x + hw, y,      hw, hh, depth + 1, activity, cfg),
+      buildLifeTree(x,      y + hh, hw, hh, depth + 1, activity, cfg),
+      buildLifeTree(x + hw, y + hh, hw, hh, depth + 1, activity, cfg),
     ]
   }
 }
@@ -71,24 +108,37 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
   const last = useRef(0)
   const stepAccum = useRef(0)
 
-  // Control state (UI) mirrored into refs so the animation loop reads live values
-  const [running, setRunning] = useState(true)
-  const [speed, setSpeed] = useState(3) // generations per second
-  const runningRef = useRef(true)
-  const stepIntervalRef = useRef(1000 / 3)
-  const resetSignal = useRef(0)
+  const initial = useRef(readInitial())
+  const [cfg, setCfg] = useState<Cfg>(initial.current.cfg)
+  const [running, setRunning] = useState(initial.current.running)
 
+  // Mirror config into a ref read by the animation loop
+  const cfgRef = useRef<Cfg>(cfg)
+  const runningRef = useRef(running)
+  const reinitRef = useRef(false)
+  useEffect(() => { cfgRef.current = cfg }, [cfg])
   useEffect(() => { runningRef.current = running }, [running])
-  useEffect(() => { stepIntervalRef.current = 1000 / speed }, [speed])
 
-  // Life grid state
+  // Sync everything to the URL query string
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const sp = new URLSearchParams()
+    for (const c of CONTROLS) sp.set(c.key, String(cfg[c.key]))
+    sp.set("running", running ? "1" : "0")
+    window.history.replaceState(null, "", `${window.location.pathname}?${sp.toString()}`)
+  }, [cfg, running])
+
+  const setParam = (key: string, value: number, reinit?: boolean) => {
+    setCfg(prev => ({ ...prev, [key]: value }))
+    if (reinit) reinitRef.current = true
+  }
+
+  // Simulation state
   const gridRef = useRef<Uint8Array | null>(null)
-  // Smoothed heat field — accumulates where life is active, decays slowly.
-  // Drives subdivision so the tree evolves gradually instead of snapping each step.
-  const heatRef = useRef<Float32Array | null>(null)
+  const heatRef = useRef<Float32Array | null>(null)      // target heat (per generation)
+  const dispRef = useRef<Float32Array | null>(null)       // displayed heat (smoothed per frame)
   const cols = useRef(0)
   const rows = useRef(0)
-  const cellPx = useRef(22)
   const seedRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
@@ -98,11 +148,21 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
     const seed = () => {
       const C = cols.current, R = rows.current
       const g = new Uint8Array(C * R)
-      for (let i = 0; i < C * R; i++) g[i] = Math.random() < 0.22 ? 1 : 0
+      const d = cfgRef.current.density
+      for (let i = 0; i < C * R; i++) g[i] = Math.random() < d ? 1 : 0
       gridRef.current = g
       heatRef.current = new Float32Array(C * R)
+      dispRef.current = new Float32Array(C * R)
     }
     seedRef.current = seed
+
+    const reinit = () => {
+      const cp = cfgRef.current.resolution
+      const W = window.innerWidth, H = window.innerHeight
+      cols.current = Math.ceil(W / cp) + 1
+      rows.current = Math.ceil(H / cp) + 1
+      seed()
+    }
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1
@@ -110,9 +170,7 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
       canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr)
       canvas.style.width = W + "px"; canvas.style.height = H + "px"
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      cols.current = Math.ceil(W / cellPx.current) + 1
-      rows.current = Math.ceil(H / cellPx.current) + 1
-      seed()
+      reinit()
     }
 
     const step = () => {
@@ -125,34 +183,27 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
           for (let dy = -1; dy <= 1; dy++) {
             for (let dx = -1; dx <= 1; dx++) {
               if (dx === 0 && dy === 0) continue
-              const nx = (x + dx + C) % C
-              const ny = (y + dy + R) % R
-              n += g[ny * C + nx]
+              n += g[((y + dy + R) % R) * C + ((x + dx + C) % C)]
             }
           }
           const alive = g[y * C + x] === 1
           next[y * C + x] = (alive && (n === 2 || n === 3)) || (!alive && n === 3) ? 1 : 0
         }
       }
-      // Inject occasional random life so it never stagnates
+      // Keep it alive — inject if population collapses
       let liveCount = 0
       for (let i = 0; i < next.length; i++) liveCount += next[i]
       if (liveCount < C * R * 0.04) {
-        for (let k = 0; k < 30; k++) {
-          const i = (Math.random() * next.length) | 0
-          next[i] = 1
-        }
+        for (let k = 0; k < 30; k++) next[(Math.random() * next.length) | 0] = 1
       }
       gridRef.current = next
 
-      // Heat dynamics run on the SAME clock as the simulation (per generation),
-      // so the growth/decay animation looks identical at every speed — changing
-      // speed just plays the same evolution slower or faster.
+      // Heat decay + deposit on the simulation clock (per generation)
       const heat = heatRef.current!
+      const decay = cfgRef.current.decay, bump = cfgRef.current.bump
       for (let i = 0; i < next.length; i++) {
-        // Decay once per generation, then bump where life is currently active
-        heat[i] *= 0.82
-        if (next[i]) heat[i] = Math.min(1, heat[i] + 0.5)
+        heat[i] *= decay
+        if (next[i]) heat[i] = Math.min(1, heat[i] + bump)
       }
     }
 
@@ -162,8 +213,12 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
       last.current = now
       stepAccum.current += dt
 
-      // Step the simulation at the user-controlled rate, only while running
-      if (runningRef.current && stepAccum.current > stepIntervalRef.current) {
+      const cfg = cfgRef.current
+
+      if (reinitRef.current) { reinit(); reinitRef.current = false }
+
+      const interval = 1000 / cfg.speed
+      if (runningRef.current && stepAccum.current > interval) {
         step(); stepAccum.current = 0
       }
 
@@ -174,11 +229,15 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
 
       const g = gridRef.current!
       const heat = heatRef.current!
+      const disp = dispRef.current!
       const C = cols.current, R = rows.current
-      const cp = cellPx.current
+      const cp = cfg.resolution
 
-      // Activity = average heat inside a rectangle (smoothed, slow-moving).
-      // Heat decay happens in step() so it stays in sync with the sim at any speed.
+      // Smoothly morph displayed heat toward target heat (frame-rate independent).
+      // smoothing 0 = instant snap, → 0.95 = very gradual structural change.
+      const alpha = cfg.smoothing <= 0 ? 1 : 1 - Math.pow(cfg.smoothing, dt / 16.667)
+      for (let i = 0; i < disp.length; i++) disp[i] += (heat[i] - disp[i]) * alpha
+
       const activity = (x0: number, y0: number, x1: number, y1: number) => {
         const gx0 = Math.max(0, Math.floor(x0 / cp))
         const gy0 = Math.max(0, Math.floor(y0 / cp))
@@ -186,19 +245,16 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
         const gy1 = Math.min(R - 1, Math.ceil(y1 / cp))
         let sum = 0, total = 0
         for (let y = gy0; y <= gy1; y++) {
-          for (let x = gx0; x <= gx1; x++) {
-            sum += heat[y * C + x]; total++
-          }
+          for (let x = gx0; x <= gx1; x++) { sum += disp[y * C + x]; total++ }
         }
         return total === 0 ? 0 : sum / total
       }
 
-      const root = buildLifeTree(0, 0, W, H, 0, activity)
+      const root = buildLifeTree(0, 0, W, H, 0, activity, cfg)
 
       ctx.fillStyle = isDark ? theme.bgDark : theme.bg
       ctx.fillRect(0, 0, W, H)
 
-      // Draw leaves
       const drawNode = (node: QNode) => {
         if (node.isLeaf) {
           const dens = activity(node.x, node.y, node.x + node.w, node.y + node.h)
@@ -212,7 +268,6 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
           ctx.moveTo(node.x, node.y + node.h); ctx.lineTo(node.x + node.w, node.y + node.h)
           ctx.stroke()
 
-          // Dot — alive if the cell at this center is alive
           const gx = Math.min(C - 1, Math.floor((node.x + node.w / 2) / cp))
           const gy = Math.min(R - 1, Math.floor((node.y + node.h / 2) / cp))
           const isAlive = g[gy * C + gx] === 1
@@ -240,12 +295,11 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
     resize()
     raf.current = requestAnimationFrame(frame)
     window.addEventListener("resize", resize)
-    // Click injects a glider-ish burst of life
+
     const onClick = (e: MouseEvent) => {
-      const g = gridRef.current
-      const heat = heatRef.current
+      const g = gridRef.current, heat = heatRef.current
       if (!g || !heat) return
-      const C = cols.current, R = rows.current, cp = cellPx.current
+      const C = cols.current, R = rows.current, cp = cfgRef.current.resolution
       const gx = Math.floor(e.clientX / cp), gy = Math.floor(e.clientY / cp)
       for (let dy = -2; dy <= 2; dy++) {
         for (let dx = -2; dx <= 2; dx++) {
@@ -264,40 +318,57 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
   }, [theme, mode])
 
   const handleReset = () => { seedRef.current?.() }
+  const handleDefaults = () => {
+    const def: Cfg = {}
+    for (const c of CONTROLS) def[c.key] = c.def
+    setCfg(def)
+    reinitRef.current = true
+  }
 
   return (
     <>
       <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" />
 
-      <div className="absolute top-6 right-6 z-50 flex flex-col gap-3 bg-background/80 backdrop-blur-sm border border-border rounded-lg px-4 py-3 font-mono text-xs">
+      <div className="absolute top-6 right-6 z-50 flex max-h-[88vh] w-64 flex-col gap-3 overflow-auto rounded-lg border border-border bg-background/80 px-4 py-3 font-mono text-xs backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setRunning(r => !r)}
-            className="px-3 py-1.5 border border-border rounded hover:bg-muted transition-colors uppercase tracking-wider"
+            className="flex-1 rounded border border-border px-3 py-1.5 uppercase tracking-wider transition-colors hover:bg-muted"
           >
             {running ? "Pause" : "Play"}
           </button>
           <button
             onClick={handleReset}
-            className="px-3 py-1.5 border border-border rounded hover:bg-muted transition-colors uppercase tracking-wider"
+            className="flex-1 rounded border border-border px-3 py-1.5 uppercase tracking-wider transition-colors hover:bg-muted"
           >
             Reset
           </button>
         </div>
-        <label className="flex items-center gap-3">
-          <span className="uppercase tracking-wider text-muted-foreground whitespace-nowrap">
-            Speed {speed}/s
-          </span>
-          <input
-            type="range"
-            min={1}
-            max={20}
-            step={1}
-            value={speed}
-            onChange={e => setSpeed(Number(e.target.value))}
-            className="w-28 accent-foreground"
-          />
-        </label>
+
+        {CONTROLS.map(c => (
+          <label key={c.key} className="flex flex-col gap-1">
+            <span className="flex items-center justify-between uppercase tracking-wider text-muted-foreground">
+              <span>{c.label}</span>
+              <span className="text-foreground">{cfg[c.key]}{c.unit ?? ""}</span>
+            </span>
+            <input
+              type="range"
+              min={c.min}
+              max={c.max}
+              step={c.step}
+              value={cfg[c.key]}
+              onChange={e => setParam(c.key, Number(e.target.value), c.reinit)}
+              className="w-full accent-foreground"
+            />
+          </label>
+        ))}
+
+        <button
+          onClick={handleDefaults}
+          className="mt-1 rounded border border-border px-3 py-1.5 uppercase tracking-wider transition-colors hover:bg-muted"
+        >
+          Reset controls
+        </button>
       </div>
     </>
   )
