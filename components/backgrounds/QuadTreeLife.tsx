@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 
 // ─── Conway's Game of Life grid ───────────────────────────────────────────────
 // The live-cell density field drives quadtree subdivision: busy regions split deep,
@@ -71,6 +71,16 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
   const last = useRef(0)
   const stepAccum = useRef(0)
 
+  // Control state (UI) mirrored into refs so the animation loop reads live values
+  const [running, setRunning] = useState(true)
+  const [speed, setSpeed] = useState(3) // generations per second
+  const runningRef = useRef(true)
+  const stepIntervalRef = useRef(1000 / 3)
+  const resetSignal = useRef(0)
+
+  useEffect(() => { runningRef.current = running }, [running])
+  useEffect(() => { stepIntervalRef.current = 1000 / speed }, [speed])
+
   // Life grid state
   const gridRef = useRef<Uint8Array | null>(null)
   // Smoothed heat field — accumulates where life is active, decays slowly.
@@ -79,6 +89,7 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
   const cols = useRef(0)
   const rows = useRef(0)
   const cellPx = useRef(22)
+  const seedRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current!
@@ -91,6 +102,7 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
       gridRef.current = g
       heatRef.current = new Float32Array(C * R)
     }
+    seedRef.current = seed
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1
@@ -146,8 +158,10 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
       last.current = now
       stepAccum.current += dt
 
-      // Step the simulation ~6 times per second
-      if (stepAccum.current > 160) { step(); stepAccum.current = 0 }
+      // Step the simulation at the user-controlled rate, only while running
+      if (runningRef.current && stepAccum.current > stepIntervalRef.current) {
+        step(); stepAccum.current = 0
+      }
 
       const W = window.innerWidth, H = window.innerHeight
       const isDark = mode === "auto"
@@ -248,5 +262,42 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
     }
   }, [theme, mode])
 
-  return <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" />
+  const handleReset = () => { seedRef.current?.() }
+
+  return (
+    <>
+      <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" />
+
+      <div className="absolute top-6 right-6 z-50 flex flex-col gap-3 bg-background/80 backdrop-blur-sm border border-border rounded-lg px-4 py-3 font-mono text-xs">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setRunning(r => !r)}
+            className="px-3 py-1.5 border border-border rounded hover:bg-muted transition-colors uppercase tracking-wider"
+          >
+            {running ? "Pause" : "Play"}
+          </button>
+          <button
+            onClick={handleReset}
+            className="px-3 py-1.5 border border-border rounded hover:bg-muted transition-colors uppercase tracking-wider"
+          >
+            Reset
+          </button>
+        </div>
+        <label className="flex items-center gap-3">
+          <span className="uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+            Speed {speed}/s
+          </span>
+          <input
+            type="range"
+            min={1}
+            max={20}
+            step={1}
+            value={speed}
+            onChange={e => setSpeed(Number(e.target.value))}
+            className="w-28 accent-foreground"
+          />
+        </label>
+      </div>
+    </>
+  )
 }
