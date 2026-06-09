@@ -23,6 +23,7 @@ const PAGES = [
   { href: "/quadtree-green-light", label: "QUADTREE — GREEN LIGHT" },
   { href: "/quadtree-blue",  label: "QUADTREE — BLUE" },
   { href: "/quadtree-amber", label: "QUADTREE — AMBER" },
+  { href: "/quadtree-life",  label: "QUADTREE — LIFE" },
   { href: "/supabase",       label: "SUPABASE GREEN" },
   { href: "/landing",        label: "LANDING DARK" },
   { href: "/landing-light",  label: "LANDING LIGHT" },
