@@ -257,6 +257,15 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
       ctx.fillStyle = isDark ? theme.bgDark : theme.bg
       ctx.fillRect(0, 0, W, H)
 
+      // Pass 1: fills + markers, and collect unique edges (deduped so shared
+      // borders between adjacent cells are only stroked once — no doubling).
+      const edges = new Map<string, number>() // edge key -> max reveal alpha
+      const addEdge = (x1: number, y1: number, x2: number, y2: number, a: number) => {
+        const key = `${x1.toFixed(1)},${y1.toFixed(1)},${x2.toFixed(1)},${y2.toFixed(1)}`
+        const prev = edges.get(key)
+        if (prev === undefined || a > prev) edges.set(key, a)
+      }
+
       const drawNode = (node: QNode) => {
         if (node.isLeaf) {
           const dens = activity(node.x, node.y, node.x + node.w, node.y + node.h)
@@ -277,31 +286,46 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
           ctx.fillStyle = theme.cellFill(dens, isDark)
           ctx.fillRect(node.x, node.y, node.w, node.h)
 
-          // Draw the full cell outline. With sparse reveal we can't rely on
-          // neighbors to complete shared edges, so stroke all four sides.
-          ctx.strokeStyle = isDark ? theme.lineDark : theme.line
-          ctx.lineWidth = theme.lineWidth
-          ctx.strokeRect(node.x + 0.5, node.y + 0.5, node.w - 1, node.h - 1)
-
-          // Only draw a marker when the cell is alive or small/active enough.
+          // Marker square
           const drawMark = isAlive || (node.w < 48 && dens > 0.12)
           if (drawMark) {
-            const s = isAlive ? 5 : 3   // square side in px
+            const s = isAlive ? 5 : 3
             ctx.fillStyle = isAlive
               ? (isDark ? theme.dotAliveDark : theme.dotAlive)
               : (isDark ? theme.dotDark : theme.dot)
-            ctx.fillRect(
-              node.x + node.w / 2 - s / 2,
-              node.y + node.h / 2 - s / 2,
-              s, s
-            )
+            ctx.fillRect(node.x + node.w / 2 - s / 2, node.y + node.h / 2 - s / 2, s, s)
           }
           ctx.globalAlpha = 1
+
+          // Collect the four edges (deduped across neighbors)
+          const x0 = node.x, y0 = node.y, x1 = node.x + node.w, y1 = node.y + node.h
+          addEdge(x0, y0, x1, y0, reveal) // top
+          addEdge(x0, y1, x1, y1, reveal) // bottom
+          addEdge(x0, y0, x0, y1, reveal) // left
+          addEdge(x1, y0, x1, y1, reveal) // right
         } else {
           for (const c of node.children!) drawNode(c)
         }
       }
       drawNode(root)
+
+      // Pass 2: stroke each unique edge once, grouped by alpha for performance.
+      ctx.strokeStyle = isDark ? theme.lineDark : theme.line
+      ctx.lineWidth = theme.lineWidth
+      let curAlpha = -1
+      for (const [key, a] of edges) {
+        if (a !== curAlpha) {
+          if (curAlpha !== -1) ctx.stroke()
+          ctx.globalAlpha = a
+          ctx.beginPath()
+          curAlpha = a
+        }
+        const [x1, y1, x2, y2] = key.split(",").map(Number)
+        ctx.moveTo(x1 + 0.5, y1 + 0.5)
+        ctx.lineTo(x2 + 0.5, y2 + 0.5)
+      }
+      if (curAlpha !== -1) ctx.stroke()
+      ctx.globalAlpha = 1
     }
 
     resize()
