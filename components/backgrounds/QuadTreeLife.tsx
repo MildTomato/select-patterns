@@ -271,13 +271,19 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
           const gx = Math.min(C - 1, Math.floor((node.x + node.w / 2) / cp))
           const gy = Math.min(R - 1, Math.floor((node.y + node.h / 2) / cp))
           const isAlive = g[gy * C + gx] === 1
-          const dotR = Math.max(1, Math.min(3.5, node.w * 0.07))
-          ctx.fillStyle = isAlive
-            ? (isDark ? theme.dotAliveDark : theme.dotAlive)
-            : (isDark ? theme.dotDark : theme.dot)
-          ctx.beginPath()
-          ctx.arc(node.x + node.w / 2, node.y + node.h / 2, isAlive ? dotR + 0.6 : dotR, 0, Math.PI * 2)
-          ctx.fill()
+          // Big calm cells are essentially empty — don't plant a lone dot in the void.
+          // Only draw a dot when the cell is alive, or small/active enough to warrant one.
+          const drawDot = isAlive || node.w < 48 || dens > 0.12
+          if (drawDot) {
+            // Fixed small radius (not scaled by cell size) so large cells never get fat dots.
+            const dotR = isAlive ? 2.6 : 1.4
+            ctx.fillStyle = isAlive
+              ? (isDark ? theme.dotAliveDark : theme.dotAlive)
+              : (isDark ? theme.dotDark : theme.dot)
+            ctx.beginPath()
+            ctx.arc(node.x + node.w / 2, node.y + node.h / 2, dotR, 0, Math.PI * 2)
+            ctx.fill()
+          }
         } else {
           for (const c of node.children!) drawNode(c)
         }
