@@ -277,23 +277,24 @@ export default function QuadTreeLife({ theme = LIFE_MONO, mode = "auto" }: Props
           ctx.fillStyle = theme.cellFill(dens, isDark)
           ctx.fillRect(node.x, node.y, node.w, node.h)
 
+          // Draw the full cell outline. With sparse reveal we can't rely on
+          // neighbors to complete shared edges, so stroke all four sides.
           ctx.strokeStyle = isDark ? theme.lineDark : theme.line
           ctx.lineWidth = theme.lineWidth
-          ctx.beginPath()
-          ctx.moveTo(node.x + node.w, node.y); ctx.lineTo(node.x + node.w, node.y + node.h)
-          ctx.moveTo(node.x, node.y + node.h); ctx.lineTo(node.x + node.w, node.y + node.h)
-          ctx.stroke()
+          ctx.strokeRect(node.x + 0.5, node.y + 0.5, node.w - 1, node.h - 1)
 
-          // Only draw a dot when the cell is alive or small/active enough to warrant one.
-          const drawDot = isAlive || (node.w < 48 && dens > 0.12)
-          if (drawDot) {
-            const dotR = isAlive ? 2.6 : 1.4
+          // Only draw a marker when the cell is alive or small/active enough.
+          const drawMark = isAlive || (node.w < 48 && dens > 0.12)
+          if (drawMark) {
+            const s = isAlive ? 5 : 3   // square side in px
             ctx.fillStyle = isAlive
               ? (isDark ? theme.dotAliveDark : theme.dotAlive)
               : (isDark ? theme.dotDark : theme.dot)
-            ctx.beginPath()
-            ctx.arc(node.x + node.w / 2, node.y + node.h / 2, dotR, 0, Math.PI * 2)
-            ctx.fill()
+            ctx.fillRect(
+              node.x + node.w / 2 - s / 2,
+              node.y + node.h / 2 - s / 2,
+              s, s
+            )
           }
           ctx.globalAlpha = 1
         } else {
