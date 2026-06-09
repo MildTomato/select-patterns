@@ -29,10 +29,36 @@ function idx(x: number, y: number, z: number, S: number) {
   return x + y * S + z * S * S
 }
 
+// Seed a roughly spherical blob in the center so the colony visibly grows
+// outward and retracts, instead of starting as a full uniform cube.
 function seedGrid(S: number, density: number) {
   const g = new Uint8Array(S * S * S)
-  for (let i = 0; i < g.length; i++) g[i] = Math.random() < density ? 1 : 0
+  const c = (S - 1) / 2
+  const r = S * 0.32 // seed radius
+  for (let z = 0; z < S; z++) {
+    for (let y = 0; y < S; y++) {
+      for (let x = 0; x < S; x++) {
+        const dx = x - c, dy = y - c, dz = z - c
+        const inside = dx * dx + dy * dy + dz * dz <= r * r
+        g[idx(x, y, z, S)] = inside && Math.random() < density ? 1 : 0
+      }
+    }
+  }
   return g
+}
+
+// Stable per-voxel color index (doesn't change as the colony evolves, so the
+// cube reads as a structured lattice rather than flickering rainbow noise).
+// Weighted toward purple/blue with orange as an accent, matching the reference.
+function buildColorIndex(S: number) {
+  const ci = new Uint8Array(S * S * S)
+  for (let i = 0; i < ci.length; i++) {
+    let h = (i * 2654435761) >>> 0
+    h = (h ^ (h >>> 13)) >>> 0
+    const r = h % 100
+    ci[i] = r < 42 ? 0 : r < 84 ? 1 : 2 // ~42% purple, ~42% blue, ~16% orange
+  }
+  return ci
 }
 
 function stepGrid(g: Uint8Array, S: number, cfg: LifeConfig) {
@@ -65,6 +91,7 @@ function stepGrid(g: Uint8Array, S: number, cfg: LifeConfig) {
 function Voxels({ cfg, running, resetSignal }: { cfg: LifeConfig; running: boolean; resetSignal: number }) {
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const gridRef = useRef<Uint8Array>(seedGrid(cfg.size, cfg.density))
+  const colorIdxRef = useRef<Uint8Array>(buildColorIndex(cfg.size))
   const accum = useRef(0)
   const dummy = useMemo(() => new THREE.Object3D(), [])
   const color = useMemo(() => new THREE.Color(), [])
@@ -76,6 +103,7 @@ function Voxels({ cfg, running, resetSignal }: { cfg: LifeConfig; running: boole
   // Reseed when size or reset changes
   useEffect(() => {
     gridRef.current = seedGrid(cfg.size, cfg.density)
+    colorIdxRef.current = buildColorIndex(cfg.size)
     accum.current = 0
   }, [cfg.size, cfg.density, resetSignal])
 
@@ -89,31 +117,34 @@ function Voxels({ cfg, running, resetSignal }: { cfg: LifeConfig; running: boole
       if (accum.current >= interval) {
         accum.current = 0
         let g = stepGrid(gridRef.current, S, cfg)
-        // Reseed if the population collapses so it never goes empty
+        // Reseed (center blob) if the population collapses or fills the box,
+        // so it keeps cycling through growth and decay.
         let live = 0
         for (let i = 0; i < g.length; i++) live += g[i]
-        if (live < g.length * 0.01) g = seedGrid(S, cfg.density)
+        const frac = live / g.length
+        if (frac < 0.02 || frac > 0.6) {
+          g = seedGrid(S, cfg.density)
+        }
         gridRef.current = g
       }
     }
 
     // Rebuild instances
     const g = gridRef.current
+    const ci = colorIdxRef.current
     let count = 0
     for (let z = 0; z < S; z++) {
       for (let y = 0; y < S; y++) {
         for (let x = 0; x < S; x++) {
-          if (g[idx(x, y, z, S)] === 0) continue
+          const cell = idx(x, y, z, S)
+          if (g[cell] === 0) continue
           dummy.position.set(x - half, y - half, z - half)
           dummy.updateMatrix()
           mesh.setMatrixAt(count, dummy.matrix)
 
-          // Color by dominant axis position -> 3 palette buckets
-          const sum = x + y + z
-          const bucket = sum % 3
-          color.copy(PALETTE[bucket])
-          // Slight depth shading
-          const shade = 0.75 + 0.25 * (z / (S - 1))
+          // Stable color from the precomputed index, with gentle depth shading
+          color.copy(PALETTE[ci[cell]])
+          const shade = 0.78 + 0.22 * (z / (S - 1))
           color.multiplyScalar(shade)
           mesh.setColorAt(count, color)
           count++
@@ -148,13 +179,15 @@ function BoundingBox({ size }: { size: number }) {
   )
 }
 
+// Bays' 5766 rule (Survive 5-7, Born 6) — a well-known 3D Life rule that
+// supports gliders and organic, breathing growth rather than freezing solid.
 const DEFAULTS: LifeConfig = {
   size: 18,
   birthLo: 6,
-  birthHi: 8,
+  birthHi: 6,
   surviveLo: 5,
   surviveHi: 7,
-  density: 0.38,
+  density: 0.5,
   speed: 4,
 }
 
