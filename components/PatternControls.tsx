@@ -92,10 +92,10 @@ export function usePattern(){
   const [showJson, setShowJson] = useState<string|null>(null)
 
   const [mode, setMode] = useState<Mode>("step")
-  const [speed, setSpeed] = useState(1)
+  const [speed, setSpeed] = useState(2)
   const [rowVar, setRowVar] = useState(0.8)
   const [ease, setEase] = useState(1)
-  const [steps, setSteps] = useState(2)
+  const [steps, setSteps] = useState(6)
 
   const pal = palettes[theme]
   const palR = useRef(pal); palR.current = pal

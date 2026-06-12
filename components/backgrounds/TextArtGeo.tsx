@@ -106,17 +106,17 @@ export default function TextArtGeo() {
 
   // Shape controls — every attribute is adjustable, live, and persisted
   const [count, setCount] = usePersisted("geo-count",6)
-  const [sizeMul, setSizeMul] = usePersisted("geo-size",2.1)
+  const [sizeMul, setSizeMul] = usePersisted("geo-size",1.45)
   const [speedMul, setSpeedMul] = usePersisted("geo-speed",0)
-  const [spinMul, setSpinMul] = usePersisted("geo-spin",0.35)
-  const [pulseMul, setPulseMul] = usePersisted("geo-pulse",0.7)
+  const [spinMul, setSpinMul] = usePersisted("geo-spin",0.1)
+  const [pulseMul, setPulseMul] = usePersisted("geo-pulse",0.45)
   const [curveMul, setCurveMul] = usePersisted("geo-curve",1)
   const [kindsOn, setKindsOn] = usePersisted<Record<Kind,boolean>>("geo-kinds",{circle:true,square:true,tri:true,hex:true})
   const [showShapes, setShowShapes] = usePersisted("geo-show-shapes",true)
   const [showText, setShowText] = usePersisted("geo-show-text",false)
   const [textSize, setTextSize] = usePersisted("geo-text-size",1.45)
   const [rerender, setRerender] = usePersisted("geo-rerender",true)
-  const [rerenderSecs, setRerenderSecs] = usePersisted("geo-rerender-secs",1.5)
+  const [rerenderSecs, setRerenderSecs] = usePersisted("geo-rerender-secs",2)
   const ext = useRef({count,sizeMul,speedMul,spinMul,pulseMul,curveMul,kindsOn,showShapes,showText,textSize,rerender,rerenderSecs})
   ext.current = {count,sizeMul,speedMul,spinMul,pulseMul,curveMul,kindsOn,showShapes,showText,textSize,rerender,rerenderSecs}
   const resizeRef = useRef<(()=>void)|null>(null)
