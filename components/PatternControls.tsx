@@ -1,6 +1,11 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
 // Shared pattern controls: one palette + animation-settings store used by
 // the pill and dither pages. Palettes are kept per theme (light/dark),
@@ -9,9 +14,9 @@ export interface Palette { bg:string; dim:string; rows:string[] }
 export type Mode = "tween"|"step"|"slide"
 
 export const PALETTE_DARK: Palette = {
-  bg:  "#000000",
-  dim: "#4f6d59",
-  rows:["#39db77","#3c9a6d","#fbd8c6","#d1e7ff"],
+  bg:  "#121212",
+  dim: "#1d201e",
+  rows:["#39db77","#28714e","#fbd8c6","#d1e7ff"],
 }
 export const PALETTE_LIGHT: Palette = {
   bg:  "#f6f0ec",
@@ -205,6 +210,7 @@ export type Pattern = ReturnType<typeof usePattern>
 
 export function PatternPanel({p, anim="full", children}:{p:Pattern; anim?:"full"|"speed"; children?:React.ReactNode}){
   const accent = "accent-[#3ECF8E]"
+  const [open, setOpen] = usePersisted("controls-open", false)
   const [pasteOpen, setPasteOpen] = useState(false)
   const [pasteText, setPasteText] = useState("")
   const [pasteErr, setPasteErr] = useState(false)
@@ -236,7 +242,19 @@ export function PatternPanel({p, anim="full", children}:{p:Pattern; anim?:"full"
   )
 
   return (
-    <div className="absolute top-6 right-6 z-50 w-64 max-h-[calc(100vh-3rem)] overflow-y-auto font-mono text-[10px] tracking-[0.15em] uppercase bg-black/80 border border-white/20 backdrop-blur-sm p-4 flex flex-col gap-4 text-white/70 select-none">
+    <div className="absolute top-6 right-6 z-50 font-mono">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button className="text-[10px] tracking-[0.2em] uppercase px-4 py-2.5 bg-black/80 border border-white/30 text-white/70 hover:text-white hover:border-white/60 backdrop-blur-sm transition-colors">
+            Controls
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          side="bottom" align="end" sideOffset={8}
+          onInteractOutside={e=>e.preventDefault()}
+          onOpenAutoFocus={e=>e.preventDefault()}
+          className="w-64 max-h-[calc(100vh-9rem)] overflow-y-auto font-mono text-[10px] tracking-[0.15em] uppercase bg-black/85 border-white/20 backdrop-blur-sm p-4 flex flex-col gap-4 text-white/70 select-none"
+        >
       <div className="text-white/40">Animation</div>
 
       {anim==="full" && (
@@ -363,6 +381,8 @@ export function PatternPanel({p, anim="full", children}:{p:Pattern; anim?:"full"
           ))}
         </div>
       )}
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }
