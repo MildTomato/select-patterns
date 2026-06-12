@@ -43,16 +43,33 @@ const LEGACY_SAVED = "pill-neon-palettes"
 const LEGACY_CUR   = "pill-neon-current"
 const LEGACY_ANIM  = "pill-neon-anim"
 
-// Page-local control state that survives reloads (per-key localStorage)
+// Reflect control state into the URL so any configuration is shareable.
+// Query params win over localStorage on load.
+function setParams(entries:Record<string,string>){
+  try{
+    const sp=new URLSearchParams(window.location.search)
+    for(const [k,v] of Object.entries(entries)) sp.set(k,v)
+    const q=sp.toString()
+    window.history.replaceState(null,"",q?`${window.location.pathname}?${q}`:window.location.pathname)
+  }catch{}
+}
+
+// Page-local control state that survives reloads (per-key localStorage),
+// readable and writable via URL query params
 export function usePersisted<T>(key:string, initial:T):[T,(v:T)=>void]{
   const [v,setV]=useState<T>(initial)
   useEffect(()=>{
+    try{
+      const q=new URLSearchParams(window.location.search).get(key)
+      if(q!=null){ setV(JSON.parse(q)); return }
+    }catch{}
     try{ const s=localStorage.getItem(key); if(s!=null) setV(JSON.parse(s)) }catch{}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[])
   const set=(nv:T)=>{
     setV(nv)
     try{ localStorage.setItem(key,JSON.stringify(nv)) }catch{}
+    setParams({[key]:JSON.stringify(nv)})
   }
   return [v,set]
 }
@@ -102,6 +119,31 @@ export function usePattern(){
         if(typeof v.steps==="number") setSteps(v.steps)
       }
     }catch{}
+    // Query params override stored state — links carry configuration
+    try{
+      const sp=new URLSearchParams(window.location.search)
+      const num=(k:string)=>{ const s=sp.get(k); const n=s==null?NaN:Number(s); return isNaN(n)?null:n }
+      const m=sp.get("mode")
+      if(m==="tween"||m==="step"||m==="slide") setMode(m)
+      const qs=num("speed"); if(qs!=null) setSpeed(qs)
+      const qd=num("drift"); if(qd!=null) setRowVar(qd)
+      const qe=num("ease"); if(qe!=null) setEase(qe)
+      const qst=num("steps"); if(qst!=null) setSteps(qst)
+      const isHex=(h:string|null)=>!!h&&/^[0-9a-fA-F]{6}$/.test(h)
+      const qbg=sp.get("bg"), qdim=sp.get("dim"), qrows=sp.get("rows")
+      if(isHex(qbg)||isHex(qdim)||qrows){
+        const th=document.documentElement.classList.contains("dark")?"dark":"light"
+        setPalettes(prev=>{
+          const cur=prev[th]
+          const nr=qrows? qrows.split("-").filter(h=>/^[0-9a-fA-F]{6}$/.test(h)).map(h=>"#"+h):null
+          return {...prev,[th]:{
+            bg: isHex(qbg)?"#"+qbg:cur.bg,
+            dim: isHex(qdim)?"#"+qdim:cur.dim,
+            rows: nr&&nr.length?nr:cur.rows,
+          }}
+        })
+      }
+    }catch{}
     const el=document.documentElement
     const update=()=>setTheme(el.classList.contains("dark")?"dark":"light")
     update()
@@ -112,12 +154,14 @@ export function usePattern(){
 
   useEffect(()=>{
     localStorage.setItem(ANIM_KEY, JSON.stringify({mode,speed,rowVar,ease,steps}))
+    setParams({mode, speed:String(speed), drift:String(rowVar), ease:String(ease), steps:String(steps)})
   },[mode,speed,rowVar,ease,steps])
 
   const setPal = (p:Palette)=>{
     const next={...palettes,[theme]:p}
     setPalettes(next)
     localStorage.setItem(CUR_KEY,JSON.stringify(next))
+    setParams({bg:p.bg.slice(1), dim:p.dim.slice(1), rows:p.rows.map(r=>r.slice(1)).join("-")})
   }
   const resetPalette = ()=>setPal(theme==="dark"?PALETTE_DARK:PALETTE_LIGHT)
   const savePalette = ()=>{
