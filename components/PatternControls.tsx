@@ -9,9 +9,9 @@ export interface Palette { bg:string; dim:string; rows:string[] }
 export type Mode = "tween"|"step"|"slide"
 
 export const PALETTE_DARK: Palette = {
-  bg:  "#0b110e",
-  dim: "#1b2a21",
-  rows:["#7bf1a8","#2a7b54","#ddffb3","#f0fafd"],
+  bg:  "#000000",
+  dim: "#4f6d59",
+  rows:["#39db77","#3c9a6d","#fbd8c6","#d1e7ff"],
 }
 export const PALETTE_LIGHT: Palette = {
   bg:  "#f6f0ec",
@@ -73,7 +73,7 @@ export function usePattern(){
   const [speed, setSpeed] = useState(1)
   const [rowVar, setRowVar] = useState(0.8)
   const [ease, setEase] = useState(1)
-  const [steps, setSteps] = useState(4)
+  const [steps, setSteps] = useState(2)
 
   const pal = palettes[theme]
   const palR = useRef(pal); palR.current = pal
