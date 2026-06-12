@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import { usePattern, PatternPanel } from "@/components/PatternControls"
 
 interface Blob { x:number;y:number;vx:number;vy:number;angle:number;angleSpeed:number;radiusX:number;radiusY:number }
 interface Ripple { x:number;y:number;radius:number;life:number }
@@ -9,19 +10,8 @@ interface Ripple { x:number;y:number;radius:number;life:number }
 const WORDS = ["CONF","TALK","OPEN","CODE","SHIP","LIVE","DEMO","BUILD","NEXT","DATA"]
 function wordAt(col:number,row:number){ const h=((col*2654435761)^(row*2246822519))>>>0; return WORDS[h%WORDS.length] }
 
-// Each row cycles through Supabase green shades
-const ROW_COLORS = [
-  "#0d1f17",
-  "#1a4731",
-  "#276749",
-  "#3ECF8E",
-  "#5cd9a0",
-  "#a8f0d4",
-  "#276749",
-  "#1a4731",
-]
-
 export default function DitherRowsColor() {
+  const p = usePattern()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mouse = useRef({x:-9999,y:-9999})
   const blobsR = useRef<Blob[]>([])
@@ -54,14 +44,16 @@ export default function DitherRowsColor() {
       const delta=Math.min(dt/16.667,4)
       const W=window.innerWidth,H=window.innerHeight
 
+      const pal=p.palR.current
+      const sd=delta*p.ctl.current.speed
       for(const b of blobsR.current){
-        b.x+=b.vx*delta;b.y+=b.vy*delta;b.angle+=b.angleSpeed*delta
+        b.x+=b.vx*sd;b.y+=b.vy*sd;b.angle+=b.angleSpeed*sd
         if(b.x<0||b.x>W)b.vx*=-1; if(b.y<0||b.y>H)b.vy*=-1
       }
       ripplesR.current=ripplesR.current.filter(r=>r.life<1)
-      for(const r of ripplesR.current){r.radius+=10*delta;r.life+=0.04*delta}
+      for(const r of ripplesR.current){r.radius+=10*sd;r.life+=0.04*sd}
 
-      ctx.fillStyle="#060e0a"; ctx.fillRect(0,0,W,H)
+      ctx.fillStyle=pal.bg; ctx.fillRect(0,0,W,H)
 
       const mx=mouse.current.x,my=mouse.current.y
       const COLS=Math.ceil(W/STEP)+1,ROWS=Math.ceil(H/STEP)+1
@@ -90,16 +82,14 @@ export default function DitherRowsColor() {
           const inside = inf > 0.30 + rowBias
 
           if(inside){
-            const rowColor = ROW_COLORS[row % ROW_COLORS.length]
-            ctx.fillStyle = rowColor
+            ctx.fillStyle = pal.rows[row % pal.rows.length]
             ctx.fillRect(cx-STEP/2,cy-STEP/2,STEP,STEP)
             ctx.fillStyle="#ffffff"
             ctx.font="bold 8px monospace"
             ctx.textAlign="center"; ctx.textBaseline="middle"
             ctx.fillText(wordAt(col,row),cx,cy)
           } else {
-            const rowColor = ROW_COLORS[row % ROW_COLORS.length]
-            ctx.fillStyle = rowColor
+            ctx.fillStyle = pal.dim
             ctx.beginPath(); ctx.arc(cx,cy,2,0,Math.PI*2); ctx.fill()
           }
         }
@@ -116,5 +106,10 @@ export default function DitherRowsColor() {
     return ()=>{ cancelAnimationFrame(raf.current); window.removeEventListener("resize",resize) }
   },[])
 
-  return <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" />
+  return (
+    <>
+      <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" />
+      <PatternPanel p={p} anim="speed" />
+    </>
+  )
 }
