@@ -6,11 +6,17 @@ import { usePattern, PatternPanel } from "@/components/PatternControls"
 interface Blob { x:number;y:number;vx:number;vy:number;angle:number;angleSpeed:number;radiusX:number;radiusY:number }
 interface Ripple { x:number;y:number;radius:number;life:number }
 
-// Row-bias dither: threshold varies more strongly by row creating a horizontal stripe feel
+// Rows-color-light, cut up: the canvas is sliced into vertical panels,
+// each clipped hard and shifted vertically, so the continuous dither
+// field breaks at every seam — like a ribbon sliced into offset panes.
 const WORDS = ["CONF","TALK","OPEN","CODE","SHIP","LIVE","DEMO","BUILD","NEXT","DATA"]
 function wordAt(col:number,row:number){ const h=((col*2654435761)^(row*2246822519))>>>0; return WORDS[h%WORDS.length] }
 
-export default function DitherRows() {
+// Panel widths (fractions, sum 1) and base vertical offsets (fractions of H)
+const SLICE_W   = [ .16, .10, .14, .12, .18, .13, .17]
+const SLICE_OFF = [-.10, .07,-.04, .12,-.08, .05,-.12]
+
+export default function DitherRowsCut() {
   const p = usePattern()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mouse = useRef({x:-9999,y:-9999})
@@ -55,45 +61,59 @@ export default function DitherRows() {
 
       ctx.fillStyle=pal.bg; ctx.fillRect(0,0,W,H)
 
-      const mx=mouse.current.x,my=mouse.current.y
-      const COLS=Math.ceil(W/STEP)+1,ROWS=Math.ceil(H/STEP)+1
+      let x0=0
+      for(let s=0;s<SLICE_W.length;s++){
+        const w = s===SLICE_W.length-1 ? W-x0 : SLICE_W[s]*W
+        // Each panel floats gently around its base offset, out of phase
+        const yOff = SLICE_OFF[s]*H + Math.sin(now*0.0004 + s*1.7)*H*0.015
 
-      for(let row=0;row<=ROWS;row++){
-        for(let col=0;col<=COLS;col++){
-          const cx=col*STEP,cy=row*STEP
-          let inf=0
-          for(const b of blobsR.current){
-            const dx=cx-b.x,dy=cy-b.y
-            const cos=Math.cos(b.angle),sin=Math.sin(b.angle)
-            const lx=dx*cos+dy*sin,ly=-dx*sin+dy*cos
-            inf+=Math.max(0,1-Math.sqrt((lx/b.radiusX)**2+(ly/b.radiusY)**2))**2
-          }
-          inf=Math.min(1,inf)
-          const cd=Math.sqrt((cx-mx)**2+(cy-my)**2)
-          inf=Math.min(1,inf+Math.max(0,1-cd/160)**2*0.7)
-          for(const r of ripplesR.current){
-            const rd=Math.sqrt((cx-r.x)**2+(cy-r.y)**2)
-            const df=Math.abs(rd-r.radius)
-            if(df<22)inf=Math.min(1,inf+(1-df/22)*(1-r.life)*0.9)
-          }
+        ctx.save()
+        ctx.beginPath(); ctx.rect(x0,0,w,H); ctx.clip()
+        ctx.translate(0,yOff)
 
-          // Row-biased dither: odd rows have higher threshold = appear in horizontal stripes
-          const rowBias = (row % 2 === 0) ? 0.0 : 0.22
-          const inside = inf > 0.30 + rowBias
+        // Content space is shifted by yOff; mouse/ripples live in screen space
+        const mx=mouse.current.x, my=mouse.current.y-yOff
+        const rowStart=Math.floor(-yOff/STEP)-1, rowEnd=Math.ceil((H-yOff)/STEP)+1
+        const colStart=Math.floor(x0/STEP)-1, colEnd=Math.ceil((x0+w)/STEP)+1
 
-          if(inside){
-            // Mono variant: first palette color carries all cells
-            ctx.fillStyle=pal.rows[0]
-            ctx.fillRect(cx-STEP/2,cy-STEP/2,STEP,STEP)
-            ctx.fillStyle="#ffffff"
-            ctx.font="bold 8px monospace"
-            ctx.textAlign="center"; ctx.textBaseline="middle"
-            ctx.fillText(wordAt(col,row),cx,cy)
-          } else {
-            ctx.fillStyle=pal.dim
-            ctx.beginPath(); ctx.arc(cx,cy,2,0,Math.PI*2); ctx.fill()
+        for(let row=rowStart;row<=rowEnd;row++){
+          for(let col=colStart;col<=colEnd;col++){
+            const cx=col*STEP,cy=row*STEP
+            let inf=0
+            for(const b of blobsR.current){
+              const dx=cx-b.x,dy=cy-b.y
+              const cos=Math.cos(b.angle),sin=Math.sin(b.angle)
+              const lx=dx*cos+dy*sin,ly=-dx*sin+dy*cos
+              inf+=Math.max(0,1-Math.sqrt((lx/b.radiusX)**2+(ly/b.radiusY)**2))**2
+            }
+            inf=Math.min(1,inf)
+            const cd=Math.sqrt((cx-mx)**2+(cy-my)**2)
+            inf=Math.min(1,inf+Math.max(0,1-cd/160)**2*0.7)
+            for(const r of ripplesR.current){
+              const rd=Math.sqrt((cx-r.x)**2+(cy-(r.y-yOff))**2)
+              const df=Math.abs(rd-r.radius)
+              if(df<22)inf=Math.min(1,inf+(1-df/22)*(1-r.life)*0.9)
+            }
+
+            const rowBias = ((row%2)+2)%2 === 0 ? 0.0 : 0.22
+            const inside = inf > 0.30 + rowBias
+
+            if(inside){
+              const n=pal.rows.length
+              ctx.fillStyle = pal.rows[((row%n)+n)%n]
+              ctx.fillRect(cx-STEP/2,cy-STEP/2,STEP,STEP)
+              ctx.fillStyle="#ffffff"
+              ctx.font="bold 8px monospace"
+              ctx.textAlign="center"; ctx.textBaseline="middle"
+              ctx.fillText(wordAt(col,row),cx,cy)
+            } else {
+              ctx.fillStyle = pal.dim
+              ctx.beginPath(); ctx.arc(cx,cy,2,0,Math.PI*2); ctx.fill()
+            }
           }
         }
+        ctx.restore()
+        x0+=w
       }
     }
 

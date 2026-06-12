@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import { usePattern, PatternPanel } from "@/components/PatternControls"
 
 const WORDS = ["CONF","TALK","OPEN","CODE","SHIP","LIVE","DEMO","BUILD","NEXT","DATA"]
 function wordAt(col: number, row: number) {
@@ -8,22 +9,12 @@ function wordAt(col: number, row: number) {
   return WORDS[h % WORDS.length]
 }
 
-const ROW_COLORS = [
-  "#0d1f17",
-  "#1a4731",
-  "#276749",
-  "#3ECF8E",
-  "#5cd9a0",
-  "#a8f0d4",
-  "#276749",
-  "#1a4731",
-]
-
 const STEP = 28
 // How many rows above/below the cursor get influenced
 const ROW_RADIUS = 6
 
 export default function DitherRowsCursor() {
+  const p = usePattern()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mouseRef = useRef({ x: -9999, y: -9999 })
   const rafRef = useRef(0)
@@ -71,18 +62,20 @@ export default function DitherRowsCursor() {
         rowInfluenceRef.current = next
       }
 
+      const pal = p.palR.current
+      const spd = p.ctl.current.speed
       for (let r = 0; r < ROWS; r++) {
         // Distance in rows from cursor
         const rowDist = Math.abs(r - cursorRow)
         // Influence falls off with row distance — full at 0, zero at ROW_RADIUS
         const target = my < 0 ? 0 : Math.max(0, 1 - rowDist / ROW_RADIUS)
-        const lerpUp = 0.14 * delta
-        const lerpDown = 0.004 * delta  // ~10x slower decay = long residue
+        const lerpUp = 0.14 * delta * spd
+        const lerpDown = 0.004 * delta * spd  // ~10x slower decay = long residue
         const speed = target > inf[r] ? lerpUp : lerpDown
-        inf[r] = inf[r] + (target - inf[r]) * speed
+        inf[r] = inf[r] + (target - inf[r]) * Math.min(1, speed)
       }
 
-      ctx.fillStyle = "#ffffff"
+      ctx.fillStyle = pal.bg
       ctx.fillRect(0, 0, W, H)
 
       for (let row = 0; row <= ROWS; row++) {
@@ -96,8 +89,7 @@ export default function DitherRowsCursor() {
           const cy = row * STEP
 
           if (inside) {
-            const rowColor = ROW_COLORS[row % ROW_COLORS.length]
-            ctx.fillStyle = rowColor
+            ctx.fillStyle = pal.rows[row % pal.rows.length]
             ctx.fillRect(cx - STEP / 2, cy - STEP / 2, STEP, STEP)
             ctx.fillStyle = "#ffffff"
             ctx.font = "bold 8px monospace"
@@ -106,8 +98,7 @@ export default function DitherRowsCursor() {
             ctx.fillText(wordAt(col, row), cx, cy)
           } else {
             // Dim dot, tinted slightly with the row color as a ghost hint
-            const rowColor = ROW_COLORS[row % ROW_COLORS.length]
-            ctx.fillStyle = rowInf > 0.05 ? rowColor : "#cccccc"
+            ctx.fillStyle = rowInf > 0.05 ? pal.rows[row % pal.rows.length] : pal.dim
             ctx.beginPath()
             ctx.arc(cx, cy, rowInf > 0.05 ? 2.5 : 1.5, 0, Math.PI * 2)
             ctx.fill()
@@ -132,5 +123,10 @@ export default function DitherRowsCursor() {
     }
   }, [])
 
-  return <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" />
+  return (
+    <>
+      <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" />
+      <PatternPanel p={p} anim="speed" />
+    </>
+  )
 }
