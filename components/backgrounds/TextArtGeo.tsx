@@ -103,6 +103,8 @@ export default function TextArtGeo() {
   const last = useRef(0)
   const timeR = useRef(0)
   const p = usePattern()
+  const [paused, setPaused] = useState(false)
+  const pausedR = useRef(false)
   // Snapshot refs so exportSVG can read the live frame without a re-render
   const shapesR = useRef<Shape[]>([])
   const cwR = useRef(12)
@@ -219,6 +221,7 @@ export default function TextArtGeo() {
 
     const frame=(now:number)=>{
       raf.current=requestAnimationFrame(frame)
+      if(pausedR.current){ last.current=now; return }
       const dt=now-(last.current||now-16); last.current=now
       const delta=Math.min(dt/16.667,4)
       const W=window.innerWidth,H=window.innerHeight
@@ -397,6 +400,11 @@ export default function TextArtGeo() {
     return ()=>{ cancelAnimationFrame(raf.current); window.removeEventListener("resize",resize) }
   },[])
 
+  const togglePause = () => {
+    pausedR.current = !pausedR.current
+    setPaused(pausedR.current)
+  }
+
   const exportSVG = ()=>{
     const W = window.innerWidth, H = window.innerHeight
     const CW = cwR.current
@@ -463,10 +471,16 @@ export default function TextArtGeo() {
       <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" />
       <PatternPanel p={p} anim="full">
         <div className="text-white/40 mt-1">Export</div>
-        <button onClick={exportSVG}
-          className="w-full px-2 py-1.5 border border-white/20 text-white/60 hover:text-white hover:border-white/60 transition-colors">
-          Export SVG
-        </button>
+        <div className="flex gap-1">
+          <button onClick={togglePause}
+            className="flex-1 px-2 py-1.5 border border-white/20 text-white/60 hover:text-white hover:border-white/60 transition-colors">
+            {paused ? "Resume" : "Pause"}
+          </button>
+          <button onClick={exportSVG}
+            className="flex-1 px-2 py-1.5 border border-white/20 text-white/60 hover:text-white hover:border-white/60 transition-colors">
+            Export SVG
+          </button>
+        </div>
         <div className="text-white/40 mt-1">Shapes</div>
         {slider("Text size",textSize,setTextSize,0.7,2.2,0.05)}
         <div className="flex gap-1 items-stretch">
