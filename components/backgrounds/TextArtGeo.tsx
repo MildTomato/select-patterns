@@ -103,6 +103,11 @@ export default function TextArtGeo() {
   const last = useRef(0)
   const timeR = useRef(0)
   const p = usePattern()
+  // Snapshot refs so exportSVG can read the live frame without a re-render
+  const shapesR = useRef<Shape[]>([])
+  const cwR = useRef(12)
+  const chR = useRef(16)
+  const mEffR = useRef<{s:Shape;cos:number;sin:number;R:number}[]>([])
 
   // Shape controls — every attribute is adjustable, live, and persisted
   const [count, setCount] = usePersisted("geo-count",6)
@@ -168,6 +173,7 @@ export default function TextArtGeo() {
       const ts=ext.current.textSize
       CW=Math.max(6,Math.round(12*ts))
       CH=Math.max(8,Math.round(16*ts))
+      cwR.current=CW; chR.current=CH
       FONTS=`${Math.max(6,Math.round(11*ts))}px monospace`
       cache.clear()
       const dpr = window.devicePixelRatio||1
@@ -292,6 +298,8 @@ export default function TextArtGeo() {
         s,cos:Math.cos(s.angle),sin:Math.sin(s.angle),
         R:s.R*ec.sizeMul*(1+s.pulseA*ec.pulseMul*Math.sin(timeR.current*s.pulseF+s.ph)),
       }))
+      shapesR.current=shapes
+      mEffR.current=mEff
 
       for(const row of rowsR.current){
         const rh=((row.rowIdx*2654435761)>>>0)%1000/1000
@@ -389,8 +397,61 @@ export default function TextArtGeo() {
     return ()=>{ cancelAnimationFrame(raf.current); window.removeEventListener("resize",resize) }
   },[])
 
-  const slider=(label:string,value:number,set:(v:number)=>void,min:number,max:number,step:number,fmt=(v:number)=>v.toFixed(2)+"x")=>(
-    <label key={label} className="flex flex-col gap-1.5">
+  const exportSVG = ()=>{
+    const W = window.innerWidth, H = window.innerHeight
+    const CW = cwR.current
+    const fs = Math.max(6, Math.round(11 * ext.current.textSize))
+    const {bg, fills} = fillsR.current
+    const nf = fills.length
+    const ec = ext.current
+    const mEff = mEffR.current
+    const rows = rowsR.current
+
+    const lines: string[] = []
+    lines.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`)
+    lines.push(`<rect width="${W}" height="${H}" fill="${bg}"/>`)
+    lines.push(`<g font-family="monospace" font-size="${fs}" text-anchor="middle" dominant-baseline="middle">`)
+
+    for(const row of rows){
+      const cy = row.y
+      for(const slot of row.slots){
+        const scx = slot.x + CW/2
+        // Check if inside a shape
+        let best = 0, bm: typeof mEff[number]|null = null
+        if(ec.showShapes) for(const e of mEff){
+          const dx=scx-e.s.x, dy=cy-e.s.y
+          if(Math.abs(dx)>e.R*1.7||Math.abs(dy)>e.R*1.7) continue
+          const lx=dx*e.cos+dy*e.sin, ly=-dx*e.sin+dy*e.cos
+          const inside=-sdShape(e.s.kind,lx,ly,e.R)
+          if(inside>best){ best=inside; bm=e }
+        }
+        if(bm){
+          const fill = fills[bm.s.color % nf][QL]
+          const ch = bm.s.ch.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+          lines.push(`<text x="${scx.toFixed(1)}" y="${cy.toFixed(1)}" fill="${fill}">${ch}</text>`)
+          continue
+        }
+        if(!ec.showText) continue
+        if(slot.level <= 0) continue
+        const gi = Math.max(0, Math.min(GLYPHS.length-1,
+          Math.floor(slot.level*(GLYPHS.length-1)+slot.jit*1.6-0.3)))
+        const q = Math.round(slot.level * QL)
+        const fill = fills[slot.color % nf][q]
+        const ch = GLYPHS[gi].replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+        lines.push(`<text x="${scx.toFixed(1)}" y="${cy.toFixed(1)}" fill="${fill}">${ch}</text>`)
+      }
+    }
+
+    lines.push(`</g></svg>`)
+    const blob = new Blob([lines.join("\n")], {type:"image/svg+xml"})
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href=url; a.download="text-art-geo.svg"
+    a.click()
+    setTimeout(()=>URL.revokeObjectURL(url), 1000)
+  }
+
+  const slider=(label:string,value:number,set:(v:number)=>void,min:number,max:number,step:number,fmt=(v:number)=>v.toFixed(2)+"x")=>(    <label key={label} className="flex flex-col gap-1.5">
       <span className="flex justify-between"><span>{label}</span><span className="text-white">{fmt(value)}</span></span>
       <input type="range" min={min} max={max} step={step} value={value}
         onChange={e=>set(Number(e.target.value))} className="w-full accent-[#3ECF8E]" />
@@ -401,6 +462,11 @@ export default function TextArtGeo() {
     <>
       <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" />
       <PatternPanel p={p} anim="full">
+        <div className="text-white/40 mt-1">Export</div>
+        <button onClick={exportSVG}
+          className="w-full px-2 py-1.5 border border-white/20 text-white/60 hover:text-white hover:border-white/60 transition-colors">
+          Export SVG
+        </button>
         <div className="text-white/40 mt-1">Shapes</div>
         {slider("Text size",textSize,setTextSize,0.7,2.2,0.05)}
         <div className="flex gap-1 items-stretch">
